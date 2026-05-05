@@ -1,9 +1,8 @@
 'use client'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { MapPin, Download, Type, Palette, Map, Eye } from 'lucide-react'
+import { MapPin, Download, Type, Palette, Map, Eye, LayoutTemplate } from 'lucide-react'
 
-// Map styles using free tile providers
 const MAP_STYLES = [
   { id: 'minimal-light', name: 'Minimal Light', url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png' },
   { id: 'minimal-dark', name: 'Minimal Dark', url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png' },
@@ -14,7 +13,7 @@ const MAP_STYLES = [
 ]
 
 const COLOR_THEMES = [
-  { id: 'white', label: 'White', bg: '#ffffff', text: '#000000', accent: '#333333' },
+  { id: 'white', label: 'White', bg: '#ffffff', text: '#000000', accent: '#555555' },
   { id: 'black', label: 'Black', bg: '#0a0a0a', text: '#ffffff', accent: '#aaaaaa' },
   { id: 'cream', label: 'Cream', bg: '#f5f0e8', text: '#1a1a1a', accent: '#666666' },
   { id: 'navy', label: 'Navy', bg: '#0f1f3d', text: '#e8edf5', accent: '#a0b4cc' },
@@ -22,12 +21,103 @@ const COLOR_THEMES = [
   { id: 'terracotta', label: 'Terra', bg: '#3d1a0f', text: '#f5e8e0', accent: '#cc7a5a' },
   { id: 'lavender', label: 'Lavender', bg: '#1a0f3d', text: '#e8e0f5', accent: '#9a7acc' },
   { id: 'sand', label: 'Sand', bg: '#f5e8cc', text: '#3d2a0f', accent: '#8a6a3a' },
+  { id: 'rose', label: 'Rose', bg: '#2d0f1a', text: '#f5e0e8', accent: '#cc5a7a' },
+  { id: 'slate', label: 'Slate', bg: '#1a1f2e', text: '#d0d8e8', accent: '#7a90b8' },
 ]
 
 const FONTS = [
   { id: 'inter', name: 'Inter', style: "'Inter', sans-serif" },
   { id: 'playfair', name: 'Playfair Display', style: "'Playfair Display', serif" },
   { id: 'space', name: 'Space Grotesk', style: "'Space Grotesk', sans-serif" },
+]
+
+// Layout: 'split' = map top + color bar bottom, 'fullbleed' = map fills all + text overlay
+type Layout = 'split' | 'fullbleed'
+
+type Template = {
+  id: string
+  name: string
+  desc: string
+  mapStyle: string
+  colorTheme: string
+  font: string
+  layout: Layout
+  accent?: string
+}
+
+const TEMPLATES: Template[] = [
+  {
+    id: 'ghost',
+    name: 'Ghost',
+    desc: 'Ultra minimal — map fills all, white title floats on top',
+    mapStyle: 'no-labels',
+    colorTheme: 'white',
+    font: 'inter',
+    layout: 'fullbleed',
+  },
+  {
+    id: 'midnight',
+    name: 'Midnight',
+    desc: 'Dark map, black frame, clean modern type',
+    mapStyle: 'minimal-dark',
+    colorTheme: 'black',
+    font: 'space',
+    layout: 'split',
+  },
+  {
+    id: 'blueprint',
+    name: 'Blueprint',
+    desc: 'Dark map on deep navy — like an architect\'s drawing',
+    mapStyle: 'dark-no-labels',
+    colorTheme: 'navy',
+    font: 'inter',
+    layout: 'split',
+  },
+  {
+    id: 'arctic',
+    name: 'Arctic',
+    desc: 'Light clean map, warm cream frame, editorial serif font',
+    mapStyle: 'minimal-light',
+    colorTheme: 'cream',
+    font: 'playfair',
+    layout: 'split',
+  },
+  {
+    id: 'explorer',
+    name: 'Explorer',
+    desc: 'Full map with rich overlay — for adventurers',
+    mapStyle: 'voyager',
+    colorTheme: 'sand',
+    font: 'playfair',
+    layout: 'fullbleed',
+  },
+  {
+    id: 'neon',
+    name: 'Neon',
+    desc: 'Dark map, deep purple frame — a city at night',
+    mapStyle: 'dark-no-labels',
+    colorTheme: 'lavender',
+    font: 'space',
+    layout: 'fullbleed',
+  },
+  {
+    id: 'botanical',
+    name: 'Botanical',
+    desc: 'Light map, deep forest green — calm and organic',
+    mapStyle: 'no-labels',
+    colorTheme: 'forest',
+    font: 'playfair',
+    layout: 'split',
+  },
+  {
+    id: 'terra',
+    name: 'Terra',
+    desc: 'Warm earthy tones, full bleed map',
+    mapStyle: 'voyager',
+    colorTheme: 'terracotta',
+    font: 'playfair',
+    layout: 'fullbleed',
+  },
 ]
 
 const POSTER_SIZES = {
@@ -52,7 +142,8 @@ export default function MapEditor() {
   const [showSubtitle, setShowSubtitle] = useState(true)
   const [showCoords, setShowCoords] = useState(true)
   const [customTitle, setCustomTitle] = useState('')
-  const [activeTab, setActiveTab] = useState<'style' | 'colors' | 'typography' | 'labels'>('style')
+  const [layout, setLayout] = useState<Layout>('split')
+  const [activeTab, setActiveTab] = useState<'templates' | 'style' | 'colors' | 'typography' | 'labels'>('templates')
   const [isLoading, setIsLoading] = useState(false)
   const [isPaying, setIsPaying] = useState(false)
   const posterRef = useRef<HTMLDivElement>(null)
@@ -229,6 +320,7 @@ export default function MapEditor() {
           {/* Tabs */}
           <div className="flex border-b border-[#2a2a2a]">
             {[
+              { id: 'templates', label: 'Templates', icon: LayoutTemplate },
               { id: 'style', label: 'Style', icon: Map },
               { id: 'colors', label: 'Colors', icon: Palette },
               { id: 'typography', label: 'Text', icon: Type },
@@ -236,7 +328,7 @@ export default function MapEditor() {
             ].map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
-                onClick={() => setActiveTab(id as 'style' | 'colors' | 'typography' | 'labels')}
+                onClick={() => setActiveTab(id as 'templates' | 'style' | 'colors' | 'typography' | 'labels')}
                 className={`flex-1 flex flex-col items-center gap-1 py-3 text-xs transition-colors ${
                   activeTab === id ? 'text-[#8b5cf6] border-b-2 border-[#8b5cf6]' : 'text-[#6b7280] hover:text-white'
                 }`}
@@ -248,6 +340,62 @@ export default function MapEditor() {
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {/* Templates Tab */}
+            {activeTab === 'templates' && (
+              <div className="space-y-2">
+                <p className="text-xs text-[#6b7280] mb-3 uppercase tracking-wider">Presets</p>
+                {TEMPLATES.map(tpl => {
+                  const theme = COLOR_THEMES.find(c => c.id === tpl.colorTheme)!
+                  const mapStyle = MAP_STYLES.find(m => m.id === tpl.mapStyle)!
+                  return (
+                    <button
+                      key={tpl.id}
+                      onClick={() => {
+                        setActiveStyle(mapStyle)
+                        setColorTheme(theme)
+                        setFont(FONTS.find(f => f.id === tpl.font)!)
+                        setLayout(tpl.layout)
+                      }}
+                      className="w-full text-left rounded-xl border border-[#2a2a2a] hover:border-[#8b5cf6]/60 transition-all overflow-hidden"
+                    >
+                      {/* Mini poster preview */}
+                      <div className="h-16 relative overflow-hidden" style={{ backgroundColor: theme.bg }}>
+                        <div
+                          className="absolute inset-0"
+                          style={{
+                            bottom: tpl.layout === 'split' ? '30%' : 0,
+                            background: tpl.mapStyle.includes('dark') ? '#1a1a2e' : '#e8e0d5',
+                          }}
+                        />
+                        {tpl.layout === 'split' && (
+                          <div className="absolute bottom-0 left-0 right-0 flex items-center justify-center" style={{ height: '30%', backgroundColor: theme.bg }}>
+                            <span style={{ fontSize: 7, fontWeight: 700, letterSpacing: '0.15em', color: theme.text }}>CITY NAME</span>
+                          </div>
+                        )}
+                        {tpl.layout === 'fullbleed' && (
+                          <div className="absolute bottom-0 left-0 right-0 flex items-center justify-center pb-2">
+                            <span style={{ fontSize: 7, fontWeight: 700, letterSpacing: '0.15em', color: '#ffffff', textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}>CITY NAME</span>
+                          </div>
+                        )}
+                        {tpl.layout === 'fullbleed' && (
+                          <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 50%)' }} />
+                        )}
+                      </div>
+                      <div className="px-3 py-2" style={{ backgroundColor: '#111111' }}>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold text-white">{tpl.name}</span>
+                          <span className="text-[10px] text-[#8b5cf6] border border-[#8b5cf6]/30 px-1.5 py-0.5 rounded">
+                            {tpl.layout === 'fullbleed' ? 'Full Bleed' : 'Split'}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-[#6b7280] mt-0.5 leading-tight">{tpl.desc}</p>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+
             {/* Style Tab */}
             {activeTab === 'style' && (
               <div>
@@ -385,7 +533,7 @@ export default function MapEditor() {
                 backgroundColor: colorTheme.bg,
               }}
             >
-              {/* Map fills the top 78% of poster */}
+              {/* Map layer */}
               <div
                 id="map-container"
                 style={{
@@ -393,74 +541,65 @@ export default function MapEditor() {
                   top: 0,
                   left: 0,
                   right: 0,
-                  height: '78%',
+                  height: layout === 'fullbleed' ? '100%' : '78%',
                 }}
               />
 
-              {/* Thin border line between map and text */}
-              <div
-                style={{
-                  position: 'absolute',
-                  top: '78%',
-                  left: 0,
-                  right: 0,
-                  height: 1,
-                  backgroundColor: colorTheme.accent,
-                  opacity: 0.3,
-                }}
-              />
+              {layout === 'split' && (
+                <>
+                  {/* Divider line */}
+                  <div style={{ position: 'absolute', top: '78%', left: 0, right: 0, height: 1, backgroundColor: colorTheme.accent, opacity: 0.25 }} />
+                  {/* Text bar */}
+                  <div
+                    className="absolute bottom-0 left-0 right-0 flex flex-col items-center justify-center"
+                    style={{ height: '22%', backgroundColor: colorTheme.bg, color: colorTheme.text, padding: '0 24px', fontFamily: font.style }}
+                  >
+                    {showTitle && (
+                      <div style={{ fontSize: Math.round(displayWidth * 0.07), fontWeight: 700, letterSpacing: '0.15em', lineHeight: 1.1, textAlign: 'center' }}>
+                        {displayTitle}
+                      </div>
+                    )}
+                    {showSubtitle && coords && (
+                      <div style={{ fontSize: Math.round(displayWidth * 0.025), color: colorTheme.accent, letterSpacing: '0.2em', marginTop: 4, textTransform: 'uppercase' as const }}>
+                        {`${coords[0].toFixed(2)}°N · ${coords[1].toFixed(2)}°E`}
+                      </div>
+                    )}
+                    {showCoords && (
+                      <div style={{ fontSize: Math.round(displayWidth * 0.018), color: colorTheme.accent, marginTop: 6, letterSpacing: '0.1em', opacity: 0.5 }}>
+                        wallify.app
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
 
-              {/* Bottom text area */}
-              <div
-                className="absolute bottom-0 left-0 right-0 flex flex-col items-center justify-center"
-                style={{
-                  height: '22%',
-                  backgroundColor: colorTheme.bg,
-                  color: colorTheme.text,
-                  padding: '0 24px',
-                  fontFamily: font.style,
-                }}
-              >
-                {showTitle && (
+              {layout === 'fullbleed' && (
+                <>
+                  {/* Dark gradient overlay at bottom */}
+                  <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '40%', background: 'linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 100%)', pointerEvents: 'none' }} />
+                  {/* Floating text */}
                   <div
-                    style={{
-                      fontSize: Math.round(displayWidth * 0.07),
-                      fontWeight: 700,
-                      letterSpacing: '0.15em',
-                      lineHeight: 1.1,
-                      textAlign: 'center',
-                    }}
+                    className="absolute bottom-0 left-0 right-0 flex flex-col items-center justify-end"
+                    style={{ padding: `0 24px ${Math.round(displayHeight * 0.055)}px`, fontFamily: font.style, color: '#ffffff' }}
                   >
-                    {displayTitle}
+                    {showTitle && (
+                      <div style={{ fontSize: Math.round(displayWidth * 0.07), fontWeight: 700, letterSpacing: '0.15em', lineHeight: 1.1, textAlign: 'center', textShadow: '0 2px 12px rgba(0,0,0,0.8)' }}>
+                        {displayTitle}
+                      </div>
+                    )}
+                    {showSubtitle && coords && (
+                      <div style={{ fontSize: Math.round(displayWidth * 0.025), color: 'rgba(255,255,255,0.75)', letterSpacing: '0.2em', marginTop: 6, textTransform: 'uppercase' as const }}>
+                        {`${coords[0].toFixed(2)}°N · ${coords[1].toFixed(2)}°E`}
+                      </div>
+                    )}
+                    {showCoords && (
+                      <div style={{ fontSize: Math.round(displayWidth * 0.018), color: 'rgba(255,255,255,0.4)', marginTop: 8, letterSpacing: '0.1em' }}>
+                        wallify.app
+                      </div>
+                    )}
                   </div>
-                )}
-                {showSubtitle && (
-                  <div
-                    style={{
-                      fontSize: Math.round(displayWidth * 0.025),
-                      color: colorTheme.accent,
-                      letterSpacing: '0.2em',
-                      marginTop: 4,
-                      textTransform: 'uppercase',
-                    }}
-                  >
-                    {coords ? `${coords[0].toFixed(2)}°N, ${coords[1].toFixed(2)}°E` : ''}
-                  </div>
-                )}
-                {showCoords && (
-                  <div
-                    style={{
-                      fontSize: Math.round(displayWidth * 0.018),
-                      color: colorTheme.accent,
-                      marginTop: 6,
-                      letterSpacing: '0.1em',
-                      opacity: 0.7,
-                    }}
-                  >
-                    wallify.app
-                  </div>
-                )}
-              </div>
+                </>
+              )}
             </div>
           )}
         </main>
