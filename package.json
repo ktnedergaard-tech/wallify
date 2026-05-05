@@ -26,6 +26,7 @@
     "stripe": "^22.1.0"
   },
   "devDependencies": {
+    "@netlify/plugin-nextjs": "^5.15.10",
     "@tailwindcss/postcss": "^4",
     "@types/fabric": "^5.3.11",
     "@types/node": "^20",
