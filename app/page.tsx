@@ -159,7 +159,7 @@ export default function Home() {
 
       {/* Pricing CTA */}
       <section className="max-w-7xl mx-auto px-6" style={{ paddingTop: 96, paddingBottom: 96, textAlign: "center" }}>
-        <div style={{ background: "linear-gradient(135deg, #1a1a2e, #0d0d0d)", border: "1px solid #2a2a2a", borderRadius: 24, padding: "64px 32px", position: "relative", overflow: "hidden" }}>
+        <div style={{ background: "linear-gradient(135deg, #1a1a2e, #0d0d0d)", border: "1px solid #2a2a2a", borderRadius: 24, padding: "64px 32px" }}>
           <div style={{ fontSize: 72, fontWeight: 800, marginBottom: 8 }}>
             <span style={{ background: "linear-gradient(135deg, #8b5cf6, #f59e0b)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
               €5
@@ -167,7 +167,7 @@ export default function Home() {
           </div>
           <p style={{ color: "#6b7280", marginBottom: 8 }}>per poster · one-time payment</p>
           <h2 style={{ fontSize: 30, fontWeight: 700, marginBottom: 16 }}>
-            Start designing, pay when you're happy
+            Start designing, pay when you&apos;re happy
           </h2>
           <p style={{ color: "#6b7280", maxWidth: 440, margin: "0 auto 32px", lineHeight: 1.7 }}>
             Use the full editor for free. Only pay when you want to download your

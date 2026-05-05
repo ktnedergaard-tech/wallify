@@ -35,7 +35,6 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -51,7 +50,10 @@ body {
   background: #3a3a3a;
 }
 
-/* Canvas wrapper */
 .canvas-wrapper canvas {
   display: block;
 }
+
+/* Leaflet overrides */
+.leaflet-container { background: transparent !important; }
+.leaflet-control-zoom, .leaflet-control-attribution { display: none !important; }
