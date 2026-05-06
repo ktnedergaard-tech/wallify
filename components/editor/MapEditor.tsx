@@ -31,6 +31,7 @@ const COLOR_THEMES = [
   { id: 'cream',      label: 'Cream',     bg: '#f5f0e8', text: '#1a1a1a', accent: '#706850' },
   { id: 'black',      label: 'Black',     bg: '#0a0a0a', text: '#ffffff', accent: '#888888' },
   { id: 'navy',       label: 'Navy',      bg: '#0f1f3d', text: '#e8edf5', accent: '#8aadcc' },
+  { id: 'gold',       label: 'Gold',      bg: '#0a1628', text: '#c8a050', accent: '#c8a050' },
   { id: 'forest',     label: 'Forest',    bg: '#1a2e1a', text: '#e0f0e0', accent: '#6aaa6a' },
   { id: 'burgundy',   label: 'Burgundy',  bg: '#2d0a10', text: '#f5e0e4', accent: '#cc5a6a' },
   { id: 'lavender',   label: 'Lavender',  bg: '#1a0f3d', text: '#e8e0f5', accent: '#9a7acc' },
@@ -52,7 +53,7 @@ type Template = { id: string; name: string; desc: string; mapStyle: string; colo
 const TEMPLATES: Template[] = [
   { id: 'arctic',    name: 'Arctic',      desc: 'Light map · cream · serif',        mapStyle: 'light',     colorTheme: 'cream',    font: 'playfair', layout: 'split' },
   { id: 'midnight',  name: 'Midnight',    desc: 'Ink map · black · modern',         mapStyle: 'ink',       colorTheme: 'black',    font: 'space',    layout: 'split' },
-  { id: 'blueprint', name: 'Blueprint',   desc: 'Navy map · navy frame',            mapStyle: 'navy',      colorTheme: 'navy',     font: 'inter',    layout: 'split' },
+  { id: 'blueprint', name: 'Blueprint',   desc: 'Navy map · full bleed · gold',     mapStyle: 'navy',      colorTheme: 'gold',     font: 'inter',    layout: 'fullbleed' },
   { id: 'botanical', name: 'Botanical',   desc: 'Sage map · forest frame · serif',  mapStyle: 'sage',      colorTheme: 'forest',   font: 'playfair', layout: 'split' },
   { id: 'atlas',     name: 'Atlas',       desc: 'Circle · light map · cream',       mapStyle: 'labels',    colorTheme: 'cream',    font: 'playfair', layout: 'circle' },
   { id: 'nautical',  name: 'Nautical',    desc: 'Circle · teal map · navy',         mapStyle: 'teal',      colorTheme: 'navy',     font: 'inter',    layout: 'circle' },
@@ -600,11 +601,12 @@ export default function MapEditor() {
 
               {/* FULL BLEED */}
               {layout === 'fullbleed' && <>
-                <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '45%', background: 'linear-gradient(to top, rgba(0,0,0,0.82) 0%, transparent 100%)', pointerEvents: 'none' }} />
+                <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '50%', background: 'linear-gradient(to top, rgba(0,0,0,0.88) 0%, transparent 100%)', pointerEvents: 'none' }} />
                 <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', padding: `0 28px ${Math.round(H * 0.065)}px`, fontFamily: font.style }}>
-                  {showTitle && <div style={{ fontSize: Math.round(W * 0.072), fontWeight: 700, letterSpacing: '0.15em', lineHeight: 1.05, textAlign: 'center', color: '#fff', textShadow: '0 2px 20px rgba(0,0,0,0.9)' }}>{displayTitle}</div>}
-                  {showSubtitle && coordLabel && <div style={{ fontSize: Math.round(W * 0.024), color: 'rgba(255,255,255,0.72)', letterSpacing: '0.2em', marginTop: 7, textTransform: 'uppercase' }}>{coordLabel}</div>}
-                  {showWatermark && <div style={{ fontSize: Math.round(W * 0.016), color: 'rgba(255,255,255,0.32)', marginTop: 8, letterSpacing: '0.1em' }}>wallify.app</div>}
+                  {showTitle && <div style={{ fontSize: Math.round(W * 0.072), fontWeight: 700, letterSpacing: '0.15em', lineHeight: 1.05, textAlign: 'center', color: colorTheme.text }}>{displayTitle}</div>}
+                  <div style={{ width: '40%', height: 1, background: colorTheme.accent, opacity: 0.5, margin: `${Math.round(H * 0.01)}px 0` }} />
+                  {showSubtitle && coordLabel && <div style={{ fontSize: Math.round(W * 0.022), color: colorTheme.accent, letterSpacing: '0.2em', marginTop: 4, textTransform: 'uppercase' }}>{coordLabel}</div>}
+                  {showWatermark && <div style={{ fontSize: Math.round(W * 0.015), color: colorTheme.accent, marginTop: 8, letterSpacing: '0.1em', opacity: 0.45 }}>wallify.app</div>}
                 </div>
               </>}
 
