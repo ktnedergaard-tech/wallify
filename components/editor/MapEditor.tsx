@@ -3,41 +3,55 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { MapPin, Download, Type, Palette, Map, Eye, LayoutTemplate, X, ChevronUp } from 'lucide-react'
 
-// All styles use light_nolabels (white bg, gray roads) as base, then CSS filter tints both.
-// Roads stay darker than bg → always visible. Dark styles use dark_nolabels.
+// Tile base URLs
+const L = 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png'
+const D = 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png'
+
+// Colors sourced from terraink/src/data/themes.json — bg/roads are exact terraink hex values.
+// CSS filters approximate the per-layer vector styling terraink uses.
+// Light themes: sepia(1) unifies the base, hue-rotate shifts hue, contrast makes roads stand out.
+// Dark themes: dark_nolabels has near-black bg + white roads; sepia+hue-rotate tints the white roads.
 const MAP_STYLES = [
-  { id: 'light',     name: 'Light',       url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',  filter: 'none',                                                                     bg: '#e8e4de', roads: '#c0b8ac' },
-  { id: 'labels',    name: 'Light+Labels', url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',       filter: 'none',                                                                     bg: '#e8e4de', roads: '#bfb8ac' },
-  { id: 'teal',      name: 'Teal',        url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',  filter: 'sepia(1) hue-rotate(130deg) saturate(2.2)',                                bg: '#a8ccc8', roads: '#6aaa9e' },
-  { id: 'aqua',      name: 'Aqua',        url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',  filter: 'sepia(1) hue-rotate(150deg) saturate(1.8) brightness(1.1)',               bg: '#bcdfe0', roads: '#82c0c4' },
-  { id: 'sage',      name: 'Sage',        url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',  filter: 'sepia(1) hue-rotate(95deg) saturate(1.4) brightness(0.92)',               bg: '#b8ccb0', roads: '#88a880' },
-  { id: 'blush',     name: 'Blush',       url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',  filter: 'sepia(1) hue-rotate(-15deg) saturate(1.3) brightness(1.12)',              bg: '#e8d0cc', roads: '#c8a098' },
-  { id: 'rose',      name: 'Rose',        url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',  filter: 'sepia(1) hue-rotate(-10deg) saturate(2.8) brightness(0.97)',              bg: '#e0a0a0', roads: '#c07070' },
-  { id: 'sand',      name: 'Sand',        url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',  filter: 'sepia(1) hue-rotate(35deg) saturate(0.7) brightness(1.12)',               bg: '#e4d8b8', roads: '#c4b888' },
-  { id: 'copper',    name: 'Copper',      url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',  filter: 'sepia(1) hue-rotate(18deg) saturate(2.5) brightness(0.88)',               bg: '#d4a060', roads: '#b07030' },
-  { id: 'mauve',     name: 'Mauve',       url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',  filter: 'sepia(1) hue-rotate(-35deg) saturate(0.9) brightness(0.97)',              bg: '#d0b8c4', roads: '#b090a0' },
-  { id: 'teal-bold', name: 'Teal Bold',   url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',  filter: 'sepia(1) hue-rotate(145deg) saturate(5) brightness(0.78)',                bg: '#006868', roads: '#004848' },
-  { id: 'ghost',     name: 'Ghost',       url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',  filter: 'saturate(0.05) brightness(1.18) contrast(0.65)',                          bg: '#f0eeea', roads: '#dcdad4' },
-  { id: 'winter',    name: 'Winter',      url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',  filter: 'grayscale(1) brightness(1.22) contrast(0.55)',                            bg: '#efefef', roads: '#d8d8d8' },
-  { id: 'ink',       name: 'Ink',         url: 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',   filter: 'sepia(1) hue-rotate(32deg) saturate(2) brightness(0.78)',           bg: '#111111', roads: '#c8a050' },
-  { id: 'navy',      name: 'Navy',        url: 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',   filter: 'sepia(1) hue-rotate(32deg) saturate(2.8) brightness(0.68)',          bg: '#0a1828', roads: '#c8a050' },
-  { id: 'burgundy',  name: 'Burgundy',    url: 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',   filter: 'sepia(1) hue-rotate(32deg) saturate(2.8) brightness(0.60)',          bg: '#2a0610', roads: '#c8a050' },
-  { id: 'forest',    name: 'Forest',      url: 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',   filter: 'sepia(1) hue-rotate(32deg) saturate(2.8) brightness(0.65)',          bg: '#0a1e0a', roads: '#c8a050' },
-  { id: 'coral',     name: 'Coral',       url: 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',   filter: 'sepia(1) hue-rotate(32deg) saturate(2.8) brightness(0.63)',          bg: '#3a0808', roads: '#c8a050' },
+  { id: 'coral',       name: 'Coral',        url: L, filter: 'sepia(1) hue-rotate(-12deg) saturate(1.4) brightness(1.1)  contrast(1.5)',    bg: '#F3E1DA', roads: '#B9473A' },
+  { id: 'sage',        name: 'Sage',         url: L, filter: 'sepia(1) hue-rotate(100deg)  saturate(1.3) brightness(1.05) contrast(1.45)',   bg: '#DDE8DD', roads: '#3F624F' },
+  { id: 'copper',      name: 'Copper',       url: L, filter: 'sepia(1) hue-rotate(20deg)   saturate(1.5) brightness(1.05) contrast(1.45)',   bg: '#E1D2C6', roads: '#7C452E' },
+  { id: 'ocean',       name: 'Ocean',        url: L, filter: 'sepia(1) hue-rotate(160deg)  saturate(1.4) brightness(1.15) contrast(1.4)',    bg: '#F0F8FA', roads: '#14536A' },
+  { id: 'forest',      name: 'Forest',       url: L, filter: 'sepia(1) hue-rotate(100deg)  saturate(1.0) brightness(1.1)  contrast(1.4)',    bg: '#F0F4F0', roads: '#3A5E4D' },
+  { id: 'terracotta',  name: 'Terracotta',   url: L, filter: 'sepia(1) hue-rotate(5deg)    saturate(1.1) brightness(1.15) contrast(1.45)',   bg: '#F5EDE4', roads: '#A0522D' },
+  { id: 'japanese',    name: 'Japanese Ink', url: L, filter: 'sepia(1) hue-rotate(-22deg)  saturate(2.0) brightness(1.2)  contrast(1.7)',    bg: '#FAF8F5', roads: '#8B2500' },
+  { id: 'rustic',      name: 'Rustic',       url: L, filter: 'sepia(1) hue-rotate(22deg)   saturate(1.3) brightness(1.05) contrast(1.4)',    bg: '#DFD5C8', roads: '#563A2A' },
+  { id: 'pastel',      name: 'Pastel Dream', url: L, filter: 'sepia(1) hue-rotate(-50deg)  saturate(1.5) brightness(1.2)  contrast(1.5)',    bg: '#FAF7F2', roads: '#6870A0' },
+  { id: 'warm_beige',  name: 'Warm Beige',   url: L, filter: 'sepia(1) hue-rotate(30deg)   saturate(0.8) brightness(1.1)  contrast(1.4)',    bg: '#F5F0E8', roads: '#6B4828' },
+  { id: 'midnight',    name: 'Midnight Blue',url: D, filter: 'sepia(1) hue-rotate(32deg)   saturate(2.8) brightness(0.65)',                  bg: '#0A1628', roads: '#C99C37' },
+  { id: 'old_navy',    name: 'Old Navy',     url: D, filter: 'sepia(1) hue-rotate(28deg)   saturate(3.5) brightness(0.52)',                  bg: '#061327', roads: '#D4A030' },
+  { id: 'noir',        name: 'Noir',         url: D, filter: 'grayscale(1) brightness(0.72)',                                                bg: '#111111', roads: '#E0E0E0' },
+  { id: 'blueprint',   name: 'Blueprint',    url: D, filter: 'sepia(1) hue-rotate(195deg)  saturate(2.5) brightness(0.65) contrast(1.4)',    bg: '#1A3A5C', roads: '#D8EEFA' },
+  { id: 'heatwave',    name: 'Heatwave',     url: D, filter: 'sepia(1) hue-rotate(5deg)    saturate(4.5) brightness(0.52)',                  bg: '#1C0E09', roads: '#E87030' },
+  { id: 'ruby',        name: 'Ruby',         url: D, filter: 'sepia(1) hue-rotate(-22deg)  saturate(3.5) brightness(0.50)',                  bg: '#1A070F', roads: '#C0103C' },
+  { id: 'emerald',     name: 'Emerald',      url: D, filter: 'sepia(1) hue-rotate(140deg)  saturate(3.5) brightness(0.50)',                  bg: '#062C22', roads: '#4ADEB0' },
+  { id: 'neon',        name: 'Neon',         url: D, filter: 'sepia(1) hue-rotate(-38deg)  saturate(5)   brightness(0.48)',                  bg: '#0B0F1A', roads: '#FF2D95' },
 ]
 
+// Frame/text colors taken directly from terraink ui.bg + ui.text values.
 const COLOR_THEMES = [
-  { id: 'white',      label: 'White',     bg: '#ffffff', text: '#000000', accent: '#555555' },
-  { id: 'cream',      label: 'Cream',     bg: '#f5f0e8', text: '#1a1a1a', accent: '#706850' },
-  { id: 'black',      label: 'Black',     bg: '#0a0a0a', text: '#ffffff', accent: '#888888' },
-  { id: 'navy',       label: 'Navy',      bg: '#0f1f3d', text: '#e8edf5', accent: '#8aadcc' },
-  { id: 'gold',       label: 'Gold',      bg: '#0a1628', text: '#c8a050', accent: '#c8a050' },
-  { id: 'forest',     label: 'Forest',    bg: '#1a2e1a', text: '#e0f0e0', accent: '#6aaa6a' },
-  { id: 'burgundy',   label: 'Burgundy',  bg: '#2d0a10', text: '#f5e0e4', accent: '#cc5a6a' },
-  { id: 'lavender',   label: 'Lavender',  bg: '#1a0f3d', text: '#e8e0f5', accent: '#9a7acc' },
-  { id: 'sand',       label: 'Sand',      bg: '#f5e8cc', text: '#3d2a0f', accent: '#8a6a3a' },
-  { id: 'terracotta', label: 'Terra',     bg: '#3d1a0f', text: '#f5e0d8', accent: '#cc7a5a' },
-  { id: 'blush',      label: 'Blush',     bg: '#f5e0e8', text: '#2a0a16', accent: '#c07080' },
+  { id: 'coral',      label: 'Coral',        bg: '#F3E1DA', text: '#6E2F28', accent: '#B9473A' },
+  { id: 'sage',       label: 'Sage',         bg: '#DDE8DD', text: '#2D4739', accent: '#3F624F' },
+  { id: 'copper',     label: 'Copper',       bg: '#E1D2C6', text: '#4E2F22', accent: '#7C452E' },
+  { id: 'ocean',      label: 'Ocean',        bg: '#F0F8FA', text: '#1A5F7A', accent: '#14536A' },
+  { id: 'forest',     label: 'Forest',       bg: '#F0F4F0', text: '#2D4A3E', accent: '#3A5E4D' },
+  { id: 'terracotta', label: 'Terracotta',   bg: '#F5EDE4', text: '#8B4513', accent: '#A0522D' },
+  { id: 'japanese',   label: 'Japanese Ink', bg: '#FAF8F5', text: '#2C2C2C', accent: '#8B2500' },
+  { id: 'rustic',     label: 'Rustic',       bg: '#DFD5C8', text: '#44362C', accent: '#563A2A' },
+  { id: 'pastel',     label: 'Pastel Dream', bg: '#FAF7F2', text: '#5D5A6D', accent: '#6870A0' },
+  { id: 'warm_beige', label: 'Warm Beige',   bg: '#F5F0E8', text: '#6B5B4F', accent: '#6B4828' },
+  { id: 'midnight',   label: 'Midnight Blue',bg: '#0A1628', text: '#D6B352', accent: '#C99C37' },
+  { id: 'old_navy',   label: 'Old Navy',     bg: '#061327', text: '#E2B85C', accent: '#D4A030' },
+  { id: 'noir',       label: 'Noir',         bg: '#000000', text: '#FFFFFF', accent: '#E0E0E0' },
+  { id: 'blueprint',  label: 'Blueprint',    bg: '#1A3A5C', text: '#E8F4FF', accent: '#D8EEFA' },
+  { id: 'heatwave',   label: 'Heatwave',     bg: '#1C0E09', text: '#FFD78A', accent: '#E87030' },
+  { id: 'ruby',       label: 'Ruby',         bg: '#1A070F', text: '#F6D7BC', accent: '#C0103C' },
+  { id: 'emerald',    label: 'Emerald',      bg: '#062C22', text: '#E3F9F1', accent: '#4ADEB0' },
+  { id: 'neon',       label: 'Neon',         bg: '#0B0F1A', text: '#00F5FF', accent: '#FF2D95' },
 ]
 
 const FONTS = [
@@ -51,18 +65,20 @@ type Layout = 'split' | 'fullbleed' | 'circle' | 'typography'
 type Template = { id: string; name: string; desc: string; mapStyle: string; colorTheme: string; font: string; layout: Layout }
 
 const TEMPLATES: Template[] = [
-  { id: 'arctic',    name: 'Arctic',      desc: 'Light map · cream · serif',        mapStyle: 'light',     colorTheme: 'cream',    font: 'playfair', layout: 'split' },
-  { id: 'midnight',  name: 'Midnight',    desc: 'Ink map · black · modern',         mapStyle: 'ink',       colorTheme: 'black',    font: 'space',    layout: 'split' },
-  { id: 'blueprint', name: 'Blueprint',   desc: 'Navy map · full bleed · gold',     mapStyle: 'navy',      colorTheme: 'gold',     font: 'inter',    layout: 'fullbleed' },
-  { id: 'botanical', name: 'Botanical',   desc: 'Sage map · forest frame · serif',  mapStyle: 'sage',      colorTheme: 'forest',   font: 'playfair', layout: 'split' },
-  { id: 'atlas',     name: 'Atlas',       desc: 'Circle · light map · cream',       mapStyle: 'labels',    colorTheme: 'cream',    font: 'playfair', layout: 'circle' },
-  { id: 'nautical',  name: 'Nautical',    desc: 'Circle · teal map · navy',         mapStyle: 'teal',      colorTheme: 'navy',     font: 'inter',    layout: 'circle' },
-  { id: 'bordeaux',  name: 'Bordeaux',    desc: 'Circle · burgundy map · dark',     mapStyle: 'burgundy',  colorTheme: 'burgundy', font: 'playfair', layout: 'circle' },
-  { id: 'ghost',     name: 'Ghost',       desc: 'Full bleed · ghost map · white',   mapStyle: 'ghost',     colorTheme: 'white',    font: 'inter',    layout: 'fullbleed' },
-  { id: 'terra',     name: 'Terra',       desc: 'Full bleed · copper · warm',       mapStyle: 'copper',    colorTheme: 'terracotta', font: 'playfair', layout: 'fullbleed' },
-  { id: 'neon',      name: 'Neon',        desc: 'Full bleed · teal bold · lavender',mapStyle: 'teal-bold', colorTheme: 'lavender',  font: 'space',    layout: 'fullbleed' },
-  { id: 'typo-navy', name: 'Type: Navy',  desc: 'Letters cut from navy · light map',mapStyle: 'light',     colorTheme: 'navy',     font: 'inter',    layout: 'typography' },
-  { id: 'typo-ink',  name: 'Type: Ink',   desc: 'Letters cut from black · ghost',   mapStyle: 'ghost',     colorTheme: 'black',    font: 'inter',    layout: 'typography' },
+  { id: 'tpl-midnight',   name: 'Midnight Blue', desc: 'Dark navy · gold roads · full bleed',   mapStyle: 'midnight',   colorTheme: 'midnight',   font: 'inter',    layout: 'fullbleed'  },
+  { id: 'tpl-old-navy',   name: 'Old Navy',      desc: 'Deep navy · amber roads · full bleed',  mapStyle: 'old_navy',   colorTheme: 'old_navy',   font: 'inter',    layout: 'fullbleed'  },
+  { id: 'tpl-blueprint',  name: 'Blueprint',     desc: 'Navy · white-blue roads · full bleed',  mapStyle: 'blueprint',  colorTheme: 'blueprint',  font: 'inter',    layout: 'fullbleed'  },
+  { id: 'tpl-coral',      name: 'Coral',         desc: 'Warm ivory · coral roads · split',       mapStyle: 'coral',      colorTheme: 'coral',      font: 'playfair', layout: 'split'      },
+  { id: 'tpl-sage',       name: 'Sage',          desc: 'Soft sage · green roads · split',        mapStyle: 'sage',       colorTheme: 'sage',       font: 'playfair', layout: 'split'      },
+  { id: 'tpl-copper',     name: 'Copper',        desc: 'Warm beige · copper roads · split',      mapStyle: 'copper',     colorTheme: 'copper',     font: 'playfair', layout: 'split'      },
+  { id: 'tpl-japanese',   name: 'Japanese Ink',  desc: 'Near-white · deep red roads · split',    mapStyle: 'japanese',   colorTheme: 'japanese',   font: 'inter',    layout: 'split'      },
+  { id: 'tpl-noir',       name: 'Noir',          desc: 'Pure black · white roads · full bleed',  mapStyle: 'noir',       colorTheme: 'noir',       font: 'space',    layout: 'fullbleed'  },
+  { id: 'tpl-heatwave',   name: 'Heatwave',      desc: 'Dark charred · orange roads · full bleed',mapStyle: 'heatwave',  colorTheme: 'heatwave',   font: 'space',    layout: 'fullbleed'  },
+  { id: 'tpl-emerald',    name: 'Emerald',       desc: 'Deep green · mint roads · full bleed',   mapStyle: 'emerald',    colorTheme: 'emerald',    font: 'inter',    layout: 'fullbleed'  },
+  { id: 'tpl-ocean-c',    name: 'Ocean',         desc: 'Light blue · teal roads · circle',       mapStyle: 'ocean',      colorTheme: 'ocean',      font: 'inter',    layout: 'circle'     },
+  { id: 'tpl-coral-c',    name: 'Coral Circle',  desc: 'Warm coral · ivory frame · circle',      mapStyle: 'coral',      colorTheme: 'coral',      font: 'playfair', layout: 'circle'     },
+  { id: 'tpl-typo-navy',  name: 'Type: Midnight',desc: 'Gold cutout letters · warm beige map',   mapStyle: 'warm_beige', colorTheme: 'midnight',   font: 'inter',    layout: 'typography' },
+  { id: 'tpl-typo-ink',   name: 'Type: Japanese',desc: 'Dark letters · near-white ink map',      mapStyle: 'japanese',   colorTheme: 'japanese',   font: 'inter',    layout: 'typography' },
 ]
 
 const LAYOUT_LABELS: Record<Layout, string> = { split: 'Split', fullbleed: 'Full Bleed', circle: 'Circle', typography: 'Typography' }
