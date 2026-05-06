@@ -5,25 +5,26 @@ import { MapPin, Download, Type, Palette, Map, Eye, LayoutTemplate, X, ChevronUp
 
 // All styles use light_nolabels (white bg, gray roads) as base, then CSS filter tints both.
 // Roads stay darker than bg → always visible. Dark styles use dark_nolabels.
+// Target: terraink-style muted pastels — very light airy backgrounds, clearly readable roads.
 const MAP_STYLES = [
-  { id: 'light',     name: 'Light',       url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',  filter: 'none',                                                                     bg: '#e8e4de', roads: '#c0b8ac' },
-  { id: 'labels',    name: 'Light+Labels', url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',       filter: 'none',                                                                     bg: '#e8e4de', roads: '#bfb8ac' },
-  { id: 'teal',      name: 'Teal',        url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',  filter: 'sepia(1) hue-rotate(130deg) saturate(2.2)',                                bg: '#a8ccc8', roads: '#6aaa9e' },
-  { id: 'aqua',      name: 'Aqua',        url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',  filter: 'sepia(1) hue-rotate(150deg) saturate(1.8) brightness(1.1)',               bg: '#bcdfe0', roads: '#82c0c4' },
-  { id: 'sage',      name: 'Sage',        url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',  filter: 'sepia(1) hue-rotate(95deg) saturate(1.4) brightness(0.92)',               bg: '#b8ccb0', roads: '#88a880' },
-  { id: 'blush',     name: 'Blush',       url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',  filter: 'sepia(1) hue-rotate(-15deg) saturate(1.3) brightness(1.12)',              bg: '#e8d0cc', roads: '#c8a098' },
-  { id: 'rose',      name: 'Rose',        url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',  filter: 'sepia(1) hue-rotate(-10deg) saturate(2.8) brightness(0.97)',              bg: '#e0a0a0', roads: '#c07070' },
-  { id: 'sand',      name: 'Sand',        url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',  filter: 'sepia(1) hue-rotate(35deg) saturate(0.7) brightness(1.12)',               bg: '#e4d8b8', roads: '#c4b888' },
-  { id: 'copper',    name: 'Copper',      url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',  filter: 'sepia(1) hue-rotate(18deg) saturate(2.5) brightness(0.88)',               bg: '#d4a060', roads: '#b07030' },
-  { id: 'mauve',     name: 'Mauve',       url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',  filter: 'sepia(1) hue-rotate(-35deg) saturate(0.9) brightness(0.97)',              bg: '#d0b8c4', roads: '#b090a0' },
-  { id: 'teal-bold', name: 'Teal Bold',   url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',  filter: 'sepia(1) hue-rotate(145deg) saturate(5) brightness(0.78)',                bg: '#006868', roads: '#004848' },
-  { id: 'ghost',     name: 'Ghost',       url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',  filter: 'saturate(0.05) brightness(1.18) contrast(0.65)',                          bg: '#f0eeea', roads: '#dcdad4' },
-  { id: 'winter',    name: 'Winter',      url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',  filter: 'grayscale(1) brightness(1.22) contrast(0.55)',                            bg: '#efefef', roads: '#d8d8d8' },
-  { id: 'ink',       name: 'Ink',         url: 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',   filter: 'sepia(1) hue-rotate(32deg) saturate(2) brightness(0.78)',           bg: '#111111', roads: '#c8a050' },
-  { id: 'navy',      name: 'Navy',        url: 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',   filter: 'sepia(1) hue-rotate(32deg) saturate(2.8) brightness(0.68)',          bg: '#0a1828', roads: '#c8a050' },
-  { id: 'burgundy',  name: 'Burgundy',    url: 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',   filter: 'sepia(1) hue-rotate(32deg) saturate(2.8) brightness(0.60)',          bg: '#2a0610', roads: '#c8a050' },
-  { id: 'forest',    name: 'Forest',      url: 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',   filter: 'sepia(1) hue-rotate(32deg) saturate(2.8) brightness(0.65)',          bg: '#0a1e0a', roads: '#c8a050' },
-  { id: 'coral',     name: 'Coral',       url: 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',   filter: 'sepia(1) hue-rotate(32deg) saturate(2.8) brightness(0.63)',          bg: '#3a0808', roads: '#c8a050' },
+  { id: 'light',     name: 'Light',       url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',  filter: 'none',                                                                              bg: '#f0ede8', roads: '#c4bdb4' },
+  { id: 'labels',    name: 'Light+Labels', url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',       filter: 'none',                                                                              bg: '#f0ede8', roads: '#c0bab0' },
+  { id: 'blush',     name: 'Blush',       url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',  filter: 'sepia(1) hue-rotate(-12deg) saturate(0.45) brightness(1.22)',                       bg: '#f5e8e2', roads: '#c09080' },
+  { id: 'rose',      name: 'Rose',        url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',  filter: 'sepia(1) hue-rotate(-8deg) saturate(0.75) brightness(1.12)',                        bg: '#f2d8d0', roads: '#c06858' },
+  { id: 'sage',      name: 'Sage',        url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',  filter: 'sepia(1) hue-rotate(100deg) saturate(0.45) brightness(1.2)',                        bg: '#e6eee8', roads: '#508068' },
+  { id: 'teal',      name: 'Teal',        url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',  filter: 'sepia(1) hue-rotate(140deg) saturate(0.48) brightness(1.18)',                       bg: '#deeaea', roads: '#488888' },
+  { id: 'aqua',      name: 'Aqua',        url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',  filter: 'sepia(1) hue-rotate(155deg) saturate(0.38) brightness(1.22)',                       bg: '#e2ecee', roads: '#589098' },
+  { id: 'sand',      name: 'Sand',        url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',  filter: 'sepia(1) hue-rotate(28deg) saturate(0.28) brightness(1.22)',                        bg: '#f4eadc', roads: '#c0a870' },
+  { id: 'copper',    name: 'Copper',      url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',  filter: 'sepia(1) hue-rotate(18deg) saturate(0.55) brightness(1.1)',                         bg: '#f0d8b0', roads: '#c08840' },
+  { id: 'mauve',     name: 'Mauve',       url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',  filter: 'sepia(1) hue-rotate(-35deg) saturate(0.38) brightness(1.2)',                        bg: '#eee4ec', roads: '#9878a0' },
+  { id: 'teal-bold', name: 'Teal Bold',   url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',  filter: 'sepia(1) hue-rotate(145deg) saturate(2.2) brightness(0.68)',                        bg: '#1a6060', roads: '#0a4040' },
+  { id: 'ghost',     name: 'Ghost',       url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',  filter: 'saturate(0.04) brightness(1.24) contrast(0.58)',                                    bg: '#f4f2f0', roads: '#d8d6d0' },
+  { id: 'winter',    name: 'Winter',      url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',  filter: 'grayscale(1) brightness(1.26) contrast(0.50)',                                      bg: '#f5f5f5', roads: '#d4d4d4' },
+  { id: 'ink',       name: 'Ink',         url: 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',   filter: 'sepia(1) hue-rotate(32deg) saturate(2) brightness(0.75)',                      bg: '#131313', roads: '#c8a050' },
+  { id: 'navy',      name: 'Navy',        url: 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',   filter: 'sepia(1) hue-rotate(32deg) saturate(2.8) brightness(0.65)',                    bg: '#0d1a28', roads: '#c8a050' },
+  { id: 'burgundy',  name: 'Burgundy',    url: 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',   filter: 'sepia(1) hue-rotate(32deg) saturate(2.8) brightness(0.58)',                    bg: '#280612', roads: '#c8a050' },
+  { id: 'forest',    name: 'Forest',      url: 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',   filter: 'sepia(1) hue-rotate(32deg) saturate(2.8) brightness(0.62)',                    bg: '#0c1e0c', roads: '#c8a050' },
+  { id: 'coral',     name: 'Coral',       url: 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',   filter: 'sepia(1) hue-rotate(32deg) saturate(2.8) brightness(0.60)',                    bg: '#380808', roads: '#c8a050' },
 ]
 
 const COLOR_THEMES = [
@@ -246,6 +247,13 @@ export default function MapEditor() {
   const circleTopMargin = Math.round(H * 0.03)
   const circleCenterY = circleTopMargin + circleRadius
   const circleBottom = circleCenterY + circleRadius + Math.round(H * 0.01)
+
+  // Typography geometry — each word fills full poster width via SVG textLength
+  const typoWords = displayTitle.split(' ')
+  const typoFontSize = Math.round((H * 0.44) / Math.max(typoWords.length, 1))
+  const typoLineH = Math.round(typoFontSize * 1.05)
+  const typoTotalH = typoLineH * typoWords.length
+  const typoStartY = Math.round((H - typoTotalH) / 2) + Math.round(typoFontSize * 0.82)
 
   const coordLabel = coords
     ? `${Math.abs(coords[0]).toFixed(4)}°${coords[0] >= 0 ? 'N' : 'S'}  ${Math.abs(coords[1]).toFixed(4)}°${coords[1] >= 0 ? 'E' : 'W'}`
@@ -618,17 +626,48 @@ export default function MapEditor() {
                   <defs>
                     <mask id="typo-mask">
                       <rect width="100%" height="100%" fill="white" />
-                      <text x="50%" y="50%" textAnchor="middle" dominantBaseline="middle"
-                        fontSize={Math.round(W / Math.max(displayTitle.replace(/\s/g, '').length, 2) * 1.6)}
-                        fontWeight="900" fontFamily="'Inter', sans-serif" fill="black" letterSpacing="-1">
-                        {displayTitle}
-                      </text>
+                      {typoWords.map((word, i) => (
+                        <text key={i}
+                          x="50%"
+                          y={typoStartY + i * typoLineH}
+                          textAnchor="middle"
+                          fontSize={typoFontSize}
+                          fontWeight="900"
+                          fontFamily="'Inter', sans-serif"
+                          fill="black"
+                          textLength={Math.round(W * 0.94)}
+                          lengthAdjust="spacingAndGlyphs"
+                        >{word}</text>
+                      ))}
                     </mask>
                   </defs>
+                  {/* Dark frame with letter cutouts revealing the map */}
                   <rect width="100%" height="100%" fill={colorTheme.bg} mask="url(#typo-mask)" />
-                  {showSubtitle && coordLabel && <text x="4%" y="5.5%" fill={colorTheme.text} fontSize={Math.round(W * 0.02)} fontFamily="'Inter', sans-serif" opacity="0.65">{coordLabel}</text>}
-                  <line x1="5%" y1="89%" x2="95%" y2="89%" stroke={colorTheme.accent} strokeWidth="0.5" opacity="0.25" />
-                  {showWatermark && <text x="50%" y="94%" textAnchor="middle" fill={colorTheme.accent} fontSize={Math.round(W * 0.019)} fontFamily="'Inter', sans-serif" opacity="0.5">wallify.app</text>}
+                  {/* City label upper-right */}
+                  {showTitle && (
+                    <text x={W - Math.round(W * 0.05)} y={Math.round(H * 0.075)}
+                      textAnchor="end" fill={colorTheme.text}
+                      fontSize={Math.round(W * 0.028)} fontFamily="'Inter', sans-serif"
+                      fontWeight="600" letterSpacing="0.14em" opacity="0.9">
+                      {displayTitle}
+                    </text>
+                  )}
+                  {/* Divider + coordinates bottom */}
+                  <line x1={Math.round(W * 0.05)} y1={Math.round(H * 0.895)} x2={Math.round(W * 0.95)} y2={Math.round(H * 0.895)} stroke={colorTheme.accent} strokeWidth="0.6" opacity="0.3" />
+                  {showSubtitle && coordLabel && (
+                    <text x={Math.round(W * 0.05)} y={Math.round(H * 0.935)}
+                      fill={colorTheme.text} fontSize={Math.round(W * 0.019)}
+                      fontFamily="'Inter', sans-serif" opacity="0.6" letterSpacing="0.06em">
+                      {coordLabel}
+                    </text>
+                  )}
+                  {showWatermark && (
+                    <text x={W - Math.round(W * 0.05)} y={Math.round(H * 0.935)}
+                      textAnchor="end" fill={colorTheme.accent}
+                      fontSize={Math.round(W * 0.017)} fontFamily="'Inter', sans-serif" opacity="0.45">
+                      wallify.app
+                    </text>
+                  )}
                 </svg>
               )}
             </div>
