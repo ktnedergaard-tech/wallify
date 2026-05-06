@@ -19,11 +19,11 @@ const MAP_STYLES = [
   { id: 'teal-bold', name: 'Teal Bold',   url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',  filter: 'sepia(1) hue-rotate(145deg) saturate(5) brightness(0.78)',                bg: '#006868', roads: '#004848' },
   { id: 'ghost',     name: 'Ghost',       url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',  filter: 'saturate(0.05) brightness(1.18) contrast(0.65)',                          bg: '#f0eeea', roads: '#dcdad4' },
   { id: 'winter',    name: 'Winter',      url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',  filter: 'grayscale(1) brightness(1.22) contrast(0.55)',                            bg: '#efefef', roads: '#d8d8d8' },
-  { id: 'ink',       name: 'Ink',         url: 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',   filter: 'grayscale(1) brightness(0.88) contrast(1.15)',                            bg: '#111111', roads: '#333333' },
-  { id: 'navy',      name: 'Navy',        url: 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',   filter: 'sepia(1) hue-rotate(200deg) saturate(1.8) brightness(0.72)',              bg: '#0a1828', roads: '#1e3a58' },
-  { id: 'burgundy',  name: 'Burgundy',    url: 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',   filter: 'sepia(1) hue-rotate(315deg) saturate(2.5) brightness(0.62)',              bg: '#2a0610', roads: '#5a1428' },
-  { id: 'forest',    name: 'Forest',      url: 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',   filter: 'sepia(1) hue-rotate(105deg) saturate(2) brightness(0.68)',                bg: '#0a1e0a', roads: '#1e4020' },
-  { id: 'coral',     name: 'Coral',       url: 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',   filter: 'sepia(1) hue-rotate(330deg) saturate(3.5) brightness(0.65)',              bg: '#3a0808', roads: '#6a1818' },
+  { id: 'ink',       name: 'Ink',         url: 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',   filter: 'sepia(1) hue-rotate(32deg) saturate(2) brightness(0.78)',           bg: '#111111', roads: '#c8a050' },
+  { id: 'navy',      name: 'Navy',        url: 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',   filter: 'sepia(1) hue-rotate(32deg) saturate(2.8) brightness(0.68)',          bg: '#0a1828', roads: '#c8a050' },
+  { id: 'burgundy',  name: 'Burgundy',    url: 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',   filter: 'sepia(1) hue-rotate(32deg) saturate(2.8) brightness(0.60)',          bg: '#2a0610', roads: '#c8a050' },
+  { id: 'forest',    name: 'Forest',      url: 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',   filter: 'sepia(1) hue-rotate(32deg) saturate(2.8) brightness(0.65)',          bg: '#0a1e0a', roads: '#c8a050' },
+  { id: 'coral',     name: 'Coral',       url: 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',   filter: 'sepia(1) hue-rotate(32deg) saturate(2.8) brightness(0.63)',          bg: '#3a0808', roads: '#c8a050' },
 ]
 
 const COLOR_THEMES = [
