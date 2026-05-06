@@ -1,42 +1,42 @@
 'use client'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { MapPin, Download, Type, Palette, Map, Eye, LayoutTemplate } from 'lucide-react'
+import { MapPin, Download, Type, Palette, Map, Eye, LayoutTemplate, X, ChevronUp } from 'lucide-react'
 
+// All styles use light_nolabels (white bg, gray roads) as base, then CSS filter tints both.
+// Roads stay darker than bg → always visible. Dark styles use dark_nolabels.
 const MAP_STYLES = [
-  { id: 'light',        name: 'Light',        url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',       filter: 'none',                                                                              thumb: '#e8e4dd' },
-  { id: 'teal-dark',    name: 'Teal Dark',    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',         filter: 'hue-rotate(160deg) saturate(1.5)',                                                  thumb: '#1a3d3d' },
-  { id: 'aqua',         name: 'Aqua',         url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',        filter: 'hue-rotate(165deg) saturate(2) brightness(0.95)',                                   thumb: '#c8e8e4' },
-  { id: 'olive',        name: 'Dark Olive',   url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',         filter: 'sepia(0.5) hue-rotate(55deg) saturate(1.8)',                                        thumb: '#1e220a' },
-  { id: 'navy',         name: 'Navy',         url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',         filter: 'hue-rotate(210deg) saturate(2)',                                                    thumb: '#0f1a30' },
-  { id: 'sage',         name: 'Sage',         url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',   filter: 'hue-rotate(110deg) saturate(0.8) brightness(0.85) sepia(0.3)',                     thumb: '#b8ccb0' },
-  { id: 'ink',          name: 'Ink',          url: 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',    filter: 'grayscale(1) contrast(1.4) brightness(0.85)',                                       thumb: '#111111' },
-  { id: 'burgundy',     name: 'Burgundy',     url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',         filter: 'hue-rotate(320deg) saturate(2.5) sepia(0.6) brightness(0.65)',                     thumb: '#3d0a10' },
-  { id: 'steel',        name: 'Steel Blue',   url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',        filter: 'hue-rotate(200deg) saturate(0.7) brightness(1.05)',                                 thumb: '#c0cce0' },
-  { id: 'ghost',        name: 'Ghost',        url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',   filter: 'brightness(1.15) contrast(0.75) saturate(0.3)',                                     thumb: '#f0eee8' },
-  { id: 'blush',        name: 'Blush',        url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',        filter: 'hue-rotate(330deg) saturate(0.8) sepia(0.2) brightness(1.05)',                     thumb: '#e8d0d4' },
-  { id: 'salmon',       name: 'Salmon',       url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',        filter: 'hue-rotate(340deg) saturate(1.5) sepia(0.4) brightness(0.95)',                     thumb: '#e0a8a0' },
-  { id: 'copper',       name: 'Copper',       url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',         filter: 'hue-rotate(20deg) sepia(0.9) saturate(1.8) brightness(0.7)',                       thumb: '#3d1e08' },
-  { id: 'mauve',        name: 'Dusty Mauve',  url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',        filter: 'hue-rotate(310deg) saturate(0.6) sepia(0.35) brightness(0.95)',                    thumb: '#d8c0cc' },
-  { id: 'coral',        name: 'Coral',        url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',         filter: 'hue-rotate(340deg) saturate(3.5) brightness(0.75)',                                 thumb: '#5a0a0a' },
-  { id: 'teal-bright',  name: 'Teal Bright',  url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',         filter: 'hue-rotate(155deg) saturate(3) brightness(1.1)',                                    thumb: '#003d3d' },
-  { id: 'satellite',    name: 'Satellite',    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',                    filter: 'grayscale(0.5) contrast(1.1) brightness(0.85)',                                     thumb: '#2a3020' },
-  { id: 'winter',       name: 'Winter',       url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',   filter: 'grayscale(1) brightness(1.25) contrast(0.6)',                                       thumb: '#f0f0f0' },
+  { id: 'light',     name: 'Light',       url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',  filter: 'none',                                                                     bg: '#e8e4de', roads: '#c0b8ac' },
+  { id: 'labels',    name: 'Light+Labels', url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',       filter: 'none',                                                                     bg: '#e8e4de', roads: '#bfb8ac' },
+  { id: 'teal',      name: 'Teal',        url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',  filter: 'sepia(1) hue-rotate(130deg) saturate(2.2)',                                bg: '#a8ccc8', roads: '#6aaa9e' },
+  { id: 'aqua',      name: 'Aqua',        url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',  filter: 'sepia(1) hue-rotate(150deg) saturate(1.8) brightness(1.1)',               bg: '#bcdfe0', roads: '#82c0c4' },
+  { id: 'sage',      name: 'Sage',        url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',  filter: 'sepia(1) hue-rotate(95deg) saturate(1.4) brightness(0.92)',               bg: '#b8ccb0', roads: '#88a880' },
+  { id: 'blush',     name: 'Blush',       url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',  filter: 'sepia(1) hue-rotate(-15deg) saturate(1.3) brightness(1.12)',              bg: '#e8d0cc', roads: '#c8a098' },
+  { id: 'rose',      name: 'Rose',        url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',  filter: 'sepia(1) hue-rotate(-10deg) saturate(2.8) brightness(0.97)',              bg: '#e0a0a0', roads: '#c07070' },
+  { id: 'sand',      name: 'Sand',        url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',  filter: 'sepia(1) hue-rotate(35deg) saturate(0.7) brightness(1.12)',               bg: '#e4d8b8', roads: '#c4b888' },
+  { id: 'copper',    name: 'Copper',      url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',  filter: 'sepia(1) hue-rotate(18deg) saturate(2.5) brightness(0.88)',               bg: '#d4a060', roads: '#b07030' },
+  { id: 'mauve',     name: 'Mauve',       url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',  filter: 'sepia(1) hue-rotate(-35deg) saturate(0.9) brightness(0.97)',              bg: '#d0b8c4', roads: '#b090a0' },
+  { id: 'teal-bold', name: 'Teal Bold',   url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',  filter: 'sepia(1) hue-rotate(145deg) saturate(5) brightness(0.78)',                bg: '#006868', roads: '#004848' },
+  { id: 'ghost',     name: 'Ghost',       url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',  filter: 'saturate(0.05) brightness(1.18) contrast(0.65)',                          bg: '#f0eeea', roads: '#dcdad4' },
+  { id: 'winter',    name: 'Winter',      url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',  filter: 'grayscale(1) brightness(1.22) contrast(0.55)',                            bg: '#efefef', roads: '#d8d8d8' },
+  { id: 'ink',       name: 'Ink',         url: 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',   filter: 'grayscale(1) brightness(0.88) contrast(1.15)',                            bg: '#111111', roads: '#333333' },
+  { id: 'navy',      name: 'Navy',        url: 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',   filter: 'sepia(1) hue-rotate(200deg) saturate(1.8) brightness(0.72)',              bg: '#0a1828', roads: '#1e3a58' },
+  { id: 'burgundy',  name: 'Burgundy',    url: 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',   filter: 'sepia(1) hue-rotate(315deg) saturate(2.5) brightness(0.62)',              bg: '#2a0610', roads: '#5a1428' },
+  { id: 'forest',    name: 'Forest',      url: 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',   filter: 'sepia(1) hue-rotate(105deg) saturate(2) brightness(0.68)',                bg: '#0a1e0a', roads: '#1e4020' },
+  { id: 'coral',     name: 'Coral',       url: 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',   filter: 'sepia(1) hue-rotate(330deg) saturate(3.5) brightness(0.65)',              bg: '#3a0808', roads: '#6a1818' },
 ]
 
 const COLOR_THEMES = [
-  { id: 'white',       label: 'White',     bg: '#ffffff', text: '#000000', accent: '#555555' },
-  { id: 'cream',       label: 'Cream',     bg: '#f5f0e8', text: '#1a1a1a', accent: '#777060' },
-  { id: 'black',       label: 'Black',     bg: '#0a0a0a', text: '#ffffff', accent: '#888888' },
-  { id: 'navy',        label: 'Navy',      bg: '#0f1f3d', text: '#e8edf5', accent: '#8aadcc' },
-  { id: 'forest',      label: 'Forest',    bg: '#1a2e1a', text: '#e0f0e0', accent: '#6aaa6a' },
-  { id: 'burgundy',    label: 'Burgundy',  bg: '#2d0a10', text: '#f5e0e4', accent: '#cc5a6a' },
-  { id: 'lavender',    label: 'Lavender',  bg: '#1a0f3d', text: '#e8e0f5', accent: '#9a7acc' },
-  { id: 'sand',        label: 'Sand',      bg: '#f5e8cc', text: '#3d2a0f', accent: '#8a6a3a' },
-  { id: 'terracotta',  label: 'Terra',     bg: '#3d1a0f', text: '#f5e0d8', accent: '#cc7a5a' },
-  { id: 'slate',       label: 'Slate',     bg: '#1a1f2e', text: '#d0d8e8', accent: '#6a88b8' },
-  { id: 'blush',       label: 'Blush',     bg: '#f5e0e8', text: '#2a0a16', accent: '#c07080' },
-  { id: 'copper',      label: 'Copper',    bg: '#f5e8d8', text: '#2a1800', accent: '#9a6030' },
+  { id: 'white',      label: 'White',     bg: '#ffffff', text: '#000000', accent: '#555555' },
+  { id: 'cream',      label: 'Cream',     bg: '#f5f0e8', text: '#1a1a1a', accent: '#706850' },
+  { id: 'black',      label: 'Black',     bg: '#0a0a0a', text: '#ffffff', accent: '#888888' },
+  { id: 'navy',       label: 'Navy',      bg: '#0f1f3d', text: '#e8edf5', accent: '#8aadcc' },
+  { id: 'forest',     label: 'Forest',    bg: '#1a2e1a', text: '#e0f0e0', accent: '#6aaa6a' },
+  { id: 'burgundy',   label: 'Burgundy',  bg: '#2d0a10', text: '#f5e0e4', accent: '#cc5a6a' },
+  { id: 'lavender',   label: 'Lavender',  bg: '#1a0f3d', text: '#e8e0f5', accent: '#9a7acc' },
+  { id: 'sand',       label: 'Sand',      bg: '#f5e8cc', text: '#3d2a0f', accent: '#8a6a3a' },
+  { id: 'terracotta', label: 'Terra',     bg: '#3d1a0f', text: '#f5e0d8', accent: '#cc7a5a' },
+  { id: 'blush',      label: 'Blush',     bg: '#f5e0e8', text: '#2a0a16', accent: '#c07080' },
 ]
 
 const FONTS = [
@@ -47,30 +47,25 @@ const FONTS = [
 
 type Layout = 'split' | 'fullbleed' | 'circle' | 'typography'
 
-type Template = {
-  id: string; name: string; desc: string
-  mapStyle: string; colorTheme: string; font: string; layout: Layout
-}
+type Template = { id: string; name: string; desc: string; mapStyle: string; colorTheme: string; font: string; layout: Layout }
 
 const TEMPLATES: Template[] = [
-  { id: 'arctic',    name: 'Arctic',     desc: 'Light map · cream frame · serif',            mapStyle: 'light',       colorTheme: 'cream',      font: 'playfair', layout: 'split' },
-  { id: 'midnight',  name: 'Midnight',   desc: 'Dark map · black frame · modern sans',        mapStyle: 'ink',         colorTheme: 'black',      font: 'space',    layout: 'split' },
-  { id: 'blueprint', name: 'Blueprint',  desc: 'Dark navy map · navy frame',                  mapStyle: 'navy',        colorTheme: 'navy',       font: 'inter',    layout: 'split' },
-  { id: 'bordeaux',  name: 'Bordeaux',   desc: 'Burgundy tones · dramatic circle',            mapStyle: 'burgundy',    colorTheme: 'burgundy',   font: 'playfair', layout: 'circle' },
-  { id: 'atlas',     name: 'Atlas',      desc: 'Circle map · cream · editorial',              mapStyle: 'light',       colorTheme: 'cream',      font: 'playfair', layout: 'circle' },
-  { id: 'nautical',  name: 'Nautical',   desc: 'Teal-dark map · navy frame',                  mapStyle: 'teal-dark',   colorTheme: 'navy',       font: 'inter',    layout: 'circle' },
-  { id: 'ghost',     name: 'Ghost',      desc: 'No labels · white · full bleed',              mapStyle: 'ghost',       colorTheme: 'white',      font: 'inter',    layout: 'fullbleed' },
-  { id: 'explorer',  name: 'Explorer',   desc: 'Voyager · sand · full bleed',                 mapStyle: 'aqua',        colorTheme: 'sand',       font: 'playfair', layout: 'fullbleed' },
-  { id: 'neon',      name: 'Neon',       desc: 'Dark no-labels · lavender · full bleed',     mapStyle: 'teal-bright', colorTheme: 'lavender',   font: 'space',    layout: 'fullbleed' },
-  { id: 'typo-navy', name: 'Type: Navy', desc: 'City name cut out of navy overlay',           mapStyle: 'light',       colorTheme: 'navy',       font: 'inter',    layout: 'typography' },
-  { id: 'typo-ink',  name: 'Type: Ink',  desc: 'City name cut out of black overlay',          mapStyle: 'ghost',       colorTheme: 'black',      font: 'inter',    layout: 'typography' },
-  { id: 'botanical', name: 'Botanical',  desc: 'Sage map · forest green · serif',             mapStyle: 'sage',        colorTheme: 'forest',     font: 'playfair', layout: 'split' },
+  { id: 'arctic',    name: 'Arctic',      desc: 'Light map · cream · serif',        mapStyle: 'light',     colorTheme: 'cream',    font: 'playfair', layout: 'split' },
+  { id: 'midnight',  name: 'Midnight',    desc: 'Ink map · black · modern',         mapStyle: 'ink',       colorTheme: 'black',    font: 'space',    layout: 'split' },
+  { id: 'blueprint', name: 'Blueprint',   desc: 'Navy map · navy frame',            mapStyle: 'navy',      colorTheme: 'navy',     font: 'inter',    layout: 'split' },
+  { id: 'botanical', name: 'Botanical',   desc: 'Sage map · forest frame · serif',  mapStyle: 'sage',      colorTheme: 'forest',   font: 'playfair', layout: 'split' },
+  { id: 'atlas',     name: 'Atlas',       desc: 'Circle · light map · cream',       mapStyle: 'labels',    colorTheme: 'cream',    font: 'playfair', layout: 'circle' },
+  { id: 'nautical',  name: 'Nautical',    desc: 'Circle · teal map · navy',         mapStyle: 'teal',      colorTheme: 'navy',     font: 'inter',    layout: 'circle' },
+  { id: 'bordeaux',  name: 'Bordeaux',    desc: 'Circle · burgundy map · dark',     mapStyle: 'burgundy',  colorTheme: 'burgundy', font: 'playfair', layout: 'circle' },
+  { id: 'ghost',     name: 'Ghost',       desc: 'Full bleed · ghost map · white',   mapStyle: 'ghost',     colorTheme: 'white',    font: 'inter',    layout: 'fullbleed' },
+  { id: 'terra',     name: 'Terra',       desc: 'Full bleed · copper · warm',       mapStyle: 'copper',    colorTheme: 'terracotta', font: 'playfair', layout: 'fullbleed' },
+  { id: 'neon',      name: 'Neon',        desc: 'Full bleed · teal bold · lavender',mapStyle: 'teal-bold', colorTheme: 'lavender',  font: 'space',    layout: 'fullbleed' },
+  { id: 'typo-navy', name: 'Type: Navy',  desc: 'Letters cut from navy · light map',mapStyle: 'light',     colorTheme: 'navy',     font: 'inter',    layout: 'typography' },
+  { id: 'typo-ink',  name: 'Type: Ink',   desc: 'Letters cut from black · ghost',   mapStyle: 'ghost',     colorTheme: 'black',    font: 'inter',    layout: 'typography' },
 ]
 
-const POSTER_SIZES = {
-  A4: { width: 595, height: 842 },
-  A3: { width: 842, height: 1191 },
-}
+const LAYOUT_LABELS: Record<Layout, string> = { split: 'Split', fullbleed: 'Full Bleed', circle: 'Circle', typography: 'Typography' }
+const POSTER_SIZES = { A4: { width: 595, height: 842 }, A3: { width: 842, height: 1191 } }
 
 export default function MapEditor() {
   const searchParams = useSearchParams()
@@ -87,15 +82,25 @@ export default function MapEditor() {
   const [font, setFont] = useState(FONTS[0])
   const [showTitle, setShowTitle] = useState(true)
   const [showSubtitle, setShowSubtitle] = useState(true)
-  const [showCoords, setShowCoords] = useState(true)
+  const [showWatermark, setShowWatermark] = useState(true)
   const [customTitle, setCustomTitle] = useState('')
   const [layout, setLayout] = useState<Layout>('split')
   const [activeTab, setActiveTab] = useState<'templates' | 'style' | 'colors' | 'typography' | 'labels'>('templates')
   const [isLoading, setIsLoading] = useState(false)
   const [isPaying, setIsPaying] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
+  const [panelOpen, setPanelOpen] = useState(false)
+
   const posterRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<any>(null)
   const leafletRef = useRef<any>(null)
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
 
   const geocodeCity = useCallback(async (cityName: string) => {
     setIsLoading(true)
@@ -109,11 +114,8 @@ export default function MapEditor() {
         setCoords([parseFloat(data[0].lat), parseFloat(data[0].lon)])
         setCity(cityName)
       }
-    } catch (e) {
-      console.error('Geocoding failed:', e)
-    } finally {
-      setIsLoading(false)
-    }
+    } catch (e) { console.error('Geocoding failed:', e) }
+    finally { setIsLoading(false) }
   }, [])
 
   useEffect(() => { geocodeCity(initialCity) }, [initialCity, geocodeCity])
@@ -124,12 +126,10 @@ export default function MapEditor() {
       const L = (await import('leaflet')).default
       await import('leaflet/dist/leaflet.css')
       leafletRef.current = L
-      const mapContainer = document.getElementById('map-container')
-      if (!mapContainer) return
+      const el = document.getElementById('map-container')
+      if (!el) return
       if (mapRef.current) { mapRef.current.remove(); mapRef.current = null }
-      const map = L.map('map-container', {
-        center: coords, zoom, zoomControl: false, attributionControl: false, dragging: true, scrollWheelZoom: true,
-      })
+      const map = L.map('map-container', { center: coords, zoom, zoomControl: false, attributionControl: false, dragging: true, scrollWheelZoom: true })
       L.tileLayer(activeStyle.url, { maxZoom: 19, attribution: '' }).addTo(map)
       mapRef.current = map
     }
@@ -140,14 +140,13 @@ export default function MapEditor() {
   useEffect(() => {
     if (!mapRef.current || !leafletRef.current) return
     const L = leafletRef.current
-    mapRef.current.eachLayer((layer: any) => { if (layer instanceof L.TileLayer) mapRef.current.removeLayer(layer) })
+    mapRef.current.eachLayer((l: any) => { if (l instanceof L.TileLayer) mapRef.current.removeLayer(l) })
     L.tileLayer(activeStyle.url, { maxZoom: 19, attribution: '' }).addTo(mapRef.current)
   }, [activeStyle])
 
-  // Invalidate map size when layout changes (map area dimensions change)
   useEffect(() => {
-    if (mapRef.current) setTimeout(() => mapRef.current?.invalidateSize(), 50)
-  }, [layout, size])
+    if (mapRef.current) setTimeout(() => mapRef.current?.invalidateSize(), 80)
+  }, [layout, size, isMobile])
 
   const handleCitySearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -160,6 +159,7 @@ export default function MapEditor() {
     setColorTheme(COLOR_THEMES.find(c => c.id === tpl.colorTheme)!)
     setFont(FONTS.find(f => f.id === tpl.font)!)
     setLayout(tpl.layout)
+    if (isMobile) setPanelOpen(false)
   }
 
   const handleBuyAndDownload = async () => {
@@ -171,64 +171,364 @@ export default function MapEditor() {
       localStorage.setItem('wallify_poster_data', dataUrl)
       localStorage.setItem('wallify_poster_size', size)
       localStorage.setItem('wallify_poster_city', city)
-      const res = await fetch('/api/create-checkout-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ city, size }),
-      })
+      const res = await fetch('/api/create-checkout-session', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ city, size }) })
       const { url } = await res.json()
       if (url) window.location.href = url
-    } catch (e) {
-      console.error('Checkout error:', e)
-      setIsPaying(false)
-    }
+    } catch (e) { console.error(e); setIsPaying(false) }
   }
 
   const displayTitle = customTitle || city.toUpperCase()
+
+  // Poster display dimensions
   const posterDims = POSTER_SIZES[size]
-  const maxHeight = 700
-  const scale = maxHeight / posterDims.height
+  const availH = isMobile ? Math.min(window?.innerHeight ?? 700, 500) - 120 : 700
+  const scale = availH / posterDims.height
   const W = Math.round(posterDims.width * scale)
   const H = Math.round(posterDims.height * scale)
 
-  // Map container style per layout
-  const mapContainerStyle: React.CSSProperties = {
+  // Circle geometry — consistent between clip-path and border ring
+  const circleMarginX = Math.round(W * 0.06)
+  const circleRadius = Math.round((W - circleMarginX * 2) / 2)
+  const circleTopMargin = Math.round(H * 0.03)
+  const circleCenterY = circleTopMargin + circleRadius
+  const circleBottom = circleCenterY + circleRadius + Math.round(H * 0.01)
+
+  const coordLabel = coords
+    ? `${Math.abs(coords[0]).toFixed(4)}°${coords[0] >= 0 ? 'N' : 'S'}  ${Math.abs(coords[1]).toFixed(4)}°${coords[1] >= 0 ? 'E' : 'W'}`
+    : ''
+
+  // Map container style — changes per layout
+  const mapStyle: React.CSSProperties = {
     position: 'absolute', top: 0, left: 0, right: 0,
     height: layout === 'split' ? '78%' : '100%',
     filter: activeStyle.filter,
-    ...(layout === 'circle' ? { clipPath: `circle(${Math.round(W * 0.4)}px at 50% ${Math.round(H * 0.37)}px)` } : {}),
+    ...(layout === 'circle' ? {
+      clipPath: `circle(${circleRadius}px at ${W / 2}px ${circleCenterY}px)`,
+    } : {}),
   }
 
-  const coordLabel = coords ? `${Math.abs(coords[0]).toFixed(4)}°${coords[0] >= 0 ? 'N' : 'S'}  ${Math.abs(coords[1]).toFixed(4)}°${coords[1] >= 0 ? 'E' : 'W'}` : ''
+  // ── Sidebar content (shared between desktop and mobile) ──────────────────
+  const SidebarContent = () => (
+    <div style={{ padding: 16, overflowY: 'auto', flex: 1 }}>
 
-  const layoutLabel = { split: 'Split', fullbleed: 'Full Bleed', circle: 'Circle', typography: 'Typography' }
+      {activeTab === 'templates' && (
+        <div>
+          <p style={labelStyle}>Presets</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {TEMPLATES.map(tpl => {
+              const th = COLOR_THEMES.find(c => c.id === tpl.colorTheme)!
+              const ms = MAP_STYLES.find(m => m.id === tpl.mapStyle)!
+              return (
+                <button key={tpl.id} onClick={() => applyTemplate(tpl)}
+                  style={{ textAlign: 'left', border: '1px solid #2a2a2a', borderRadius: 12, overflow: 'hidden', cursor: 'pointer', background: 'transparent', padding: 0 }}
+                  onMouseEnter={e => (e.currentTarget.style.borderColor = '#8b5cf6')}
+                  onMouseLeave={e => (e.currentTarget.style.borderColor = '#2a2a2a')}
+                >
+                  <div style={{ height: 56, position: 'relative', backgroundColor: th.bg, overflow: 'hidden' }}>
+                    {/* Map thumbnail */}
+                    <div style={{ position: 'absolute', inset: 0, bottom: tpl.layout === 'split' ? '28%' : 0, backgroundColor: ms.bg, filter: ms.filter === 'none' ? undefined : ms.filter }}>
+                      {/* Fake road lines */}
+                      <div style={{ position: 'absolute', top: '42%', left: 0, right: 0, height: 2, backgroundColor: ms.roads, opacity: 0.8 }} />
+                      <div style={{ position: 'absolute', top: '65%', left: 0, right: 0, height: 1.5, backgroundColor: ms.roads, opacity: 0.5 }} />
+                      <div style={{ position: 'absolute', left: '35%', top: 0, bottom: 0, width: 2, backgroundColor: ms.roads, opacity: 0.7 }} />
+                      <div style={{ position: 'absolute', left: '70%', top: 0, bottom: 0, width: 1, backgroundColor: ms.roads, opacity: 0.4 }} />
+                    </div>
+                    {tpl.layout === 'circle' && <div style={{ position: 'absolute', top: '6%', left: '18%', right: '18%', bottom: '28%', borderRadius: '50%', backgroundColor: ms.bg, filter: ms.filter === 'none' ? undefined : ms.filter, overflow: 'hidden' }}>
+                      <div style={{ position: 'absolute', top: '45%', left: 0, right: 0, height: 2, backgroundColor: ms.roads }} />
+                      <div style={{ position: 'absolute', left: '40%', top: 0, bottom: 0, width: 2, backgroundColor: ms.roads }} />
+                    </div>}
+                    {tpl.layout === 'split' && <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '28%', backgroundColor: th.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span style={{ fontSize: 6, fontWeight: 700, letterSpacing: '0.15em', color: th.text }}>CITY NAME</span></div>}
+                    {tpl.layout === 'fullbleed' && <><div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.65) 0%, transparent 60%)' }} /><div style={{ position: 'absolute', bottom: 5, left: 0, right: 0, textAlign: 'center', fontSize: 7, fontWeight: 700, letterSpacing: '0.12em', color: '#fff' }}>CITY NAME</div></>}
+                    {tpl.layout === 'typography' && <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}><defs><mask id={`pm-${tpl.id}`}><rect width="100%" height="100%" fill="white" /><text x="50%" y="55%" textAnchor="middle" dominantBaseline="middle" fontSize="30" fontWeight="900" fontFamily="Inter" fill="black">CITY</text></mask></defs><rect width="100%" height="100%" fill={th.bg} mask={`url(#pm-${tpl.id})`} /></svg>}
+                  </div>
+                  <div style={{ padding: '6px 10px 8px', background: '#0d0d0d', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: '#fff' }}>{tpl.name}</div>
+                      <div style={{ fontSize: 9, color: '#6b7280', marginTop: 1 }}>{tpl.desc}</div>
+                    </div>
+                    <span style={{ fontSize: 8, color: '#8b5cf6', border: '1px solid #8b5cf620', borderRadius: 4, padding: '2px 5px', whiteSpace: 'nowrap', flexShrink: 0 }}>{LAYOUT_LABELS[tpl.layout]}</span>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
+      {activeTab === 'style' && (
+        <div>
+          <p style={labelStyle}>Map Color</p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, marginBottom: 20 }}>
+            {MAP_STYLES.map(s => (
+              <button key={s.id} onClick={() => setActiveStyle(s)} title={s.name}
+                style={{ padding: 0, border: `2px solid ${activeStyle.id === s.id ? '#8b5cf6' : 'transparent'}`, borderRadius: 10, cursor: 'pointer', background: 'transparent', overflow: 'hidden' }}>
+                <div style={{ height: 52, backgroundColor: s.bg, position: 'relative', overflow: 'hidden' }}>
+                  <div style={{ position: 'absolute', top: '40%', left: 0, right: 0, height: 3, backgroundColor: s.roads, opacity: 0.9 }} />
+                  <div style={{ position: 'absolute', top: '65%', left: 0, right: 0, height: 1.5, backgroundColor: s.roads, opacity: 0.6 }} />
+                  <div style={{ position: 'absolute', left: '38%', top: 0, bottom: 0, width: 2.5, backgroundColor: s.roads, opacity: 0.8 }} />
+                  <div style={{ position: 'absolute', left: '70%', top: 0, bottom: 0, width: 1, backgroundColor: s.roads, opacity: 0.5 }} />
+                  {activeStyle.id === s.id && <div style={{ position: 'absolute', inset: 0, border: '2px solid #8b5cf6', borderRadius: 8 }} />}
+                </div>
+                <div style={{ fontSize: 8, color: '#9ca3af', textAlign: 'center', padding: '3px 2px', background: '#111', lineHeight: 1.2 }}>{s.name}</div>
+              </button>
+            ))}
+          </div>
+
+          <p style={labelStyle}>Layout</p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 20 }}>
+            {(['split', 'fullbleed', 'circle', 'typography'] as Layout[]).map(id => (
+              <button key={id} onClick={() => setLayout(id)}
+                style={{ padding: '9px 4px', borderRadius: 8, border: `1px solid ${layout === id ? '#8b5cf6' : '#2a2a2a'}`, background: layout === id ? '#8b5cf615' : 'transparent', color: layout === id ? '#c4b5fd' : '#6b7280', fontSize: 11, cursor: 'pointer', fontWeight: 500 }}>
+                {LAYOUT_LABELS[id]}
+              </button>
+            ))}
+          </div>
+
+          <p style={labelStyle}>Zoom</p>
+          <input type="range" min="8" max="16" value={zoom} onChange={e => { const z = Number(e.target.value); setZoom(z); if (mapRef.current) mapRef.current.setZoom(z) }} style={{ width: '100%', accentColor: '#8b5cf6' }} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#6b7280', marginTop: 4 }}>
+            <span>Wide</span><span>Close</span>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'colors' && (
+        <div>
+          <p style={labelStyle}>Frame Color</p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            {COLOR_THEMES.map(t => (
+              <button key={t.id} onClick={() => setColorTheme(t)}
+                style={{ padding: '10px 12px', borderRadius: 10, border: `1px solid ${colorTheme.id === t.id ? '#8b5cf6' : '#2a2a2a'}`, background: t.bg, cursor: 'pointer', textAlign: 'left' }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: t.text }}>{t.label}</div>
+                <div style={{ fontSize: 9, color: t.accent, marginTop: 2 }}>Aa · {t.accent}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'typography' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div>
+            <p style={labelStyle}>Custom Title</p>
+            <input value={customTitle} onChange={e => setCustomTitle(e.target.value)} placeholder={city.toUpperCase()}
+              style={{ width: '100%', background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: '#fff', outline: 'none', boxSizing: 'border-box' }} />
+          </div>
+          <div>
+            <p style={labelStyle}>Font</p>
+            {FONTS.map(f => (
+              <button key={f.id} onClick={() => setFont(f)}
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: `1px solid ${font.id === f.id ? '#8b5cf6' : '#2a2a2a'}`, background: font.id === f.id ? '#8b5cf615' : 'transparent', color: '#fff', fontSize: 13, cursor: 'pointer', textAlign: 'left', marginBottom: 6, fontFamily: f.style }}>
+                {f.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'labels' && (
+        <div>
+          <p style={labelStyle}>Visible Elements</p>
+          {[
+            { label: 'City Title', value: showTitle, setter: setShowTitle },
+            { label: 'Coordinates', value: showSubtitle, setter: setShowSubtitle },
+            { label: 'Watermark', value: showWatermark, setter: setShowWatermark },
+          ].map(({ label, value, setter }) => (
+            <div key={label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+              <span style={{ fontSize: 13, color: '#fff' }}>{label}</span>
+              <button onClick={() => setter(!value)}
+                style={{ width: 40, height: 22, borderRadius: 11, border: 'none', background: value ? '#8b5cf6' : '#2a2a2a', cursor: 'pointer', position: 'relative', flexShrink: 0 }}>
+                <span style={{ position: 'absolute', top: 2, width: 18, height: 18, background: '#fff', borderRadius: '50%', transition: 'left 0.15s', left: value ? '20px' : '2px' }} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+
+  // ── Poster render ──────────────────────────────────────────────────────────
+  const PosterCanvas = () => (
+    <div ref={posterRef}
+      style={{ position: 'relative', width: W, height: H, backgroundColor: colorTheme.bg, boxShadow: '0 32px 80px rgba(0,0,0,0.6)', overflow: 'hidden', flexShrink: 0 }}
+    >
+      {/* Map */}
+      <div id="map-container" style={mapStyle} />
+
+      {/* SPLIT */}
+      {layout === 'split' && <>
+        <div style={{ position: 'absolute', top: '78%', left: 0, right: 0, height: 1, background: colorTheme.accent, opacity: 0.2 }} />
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '22%', backgroundColor: colorTheme.bg, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '0 28px', fontFamily: font.style }}>
+          {showTitle && <div style={{ fontSize: Math.round(W * 0.072), fontWeight: 700, letterSpacing: '0.15em', lineHeight: 1.05, textAlign: 'center', color: colorTheme.text }}>{displayTitle}</div>}
+          {showSubtitle && coordLabel && <div style={{ fontSize: Math.round(W * 0.024), color: colorTheme.accent, letterSpacing: '0.2em', marginTop: 5, textTransform: 'uppercase' }}>{coordLabel}</div>}
+          {showWatermark && <div style={{ fontSize: Math.round(W * 0.016), color: colorTheme.accent, marginTop: 5, letterSpacing: '0.1em', opacity: 0.45 }}>wallify.app</div>}
+        </div>
+      </>}
+
+      {/* FULL BLEED */}
+      {layout === 'fullbleed' && <>
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '45%', background: 'linear-gradient(to top, rgba(0,0,0,0.82) 0%, transparent 100%)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', padding: `0 28px ${Math.round(H * 0.065)}px`, fontFamily: font.style }}>
+          {showTitle && <div style={{ fontSize: Math.round(W * 0.072), fontWeight: 700, letterSpacing: '0.15em', lineHeight: 1.05, textAlign: 'center', color: '#fff', textShadow: '0 2px 20px rgba(0,0,0,0.9)' }}>{displayTitle}</div>}
+          {showSubtitle && coordLabel && <div style={{ fontSize: Math.round(W * 0.024), color: 'rgba(255,255,255,0.72)', letterSpacing: '0.2em', marginTop: 7, textTransform: 'uppercase' }}>{coordLabel}</div>}
+          {showWatermark && <div style={{ fontSize: Math.round(W * 0.016), color: 'rgba(255,255,255,0.32)', marginTop: 8, letterSpacing: '0.1em' }}>wallify.app</div>}
+        </div>
+      </>}
+
+      {/* CIRCLE */}
+      {layout === 'circle' && <>
+        {/* Circle border ring — exactly matches clip-path */}
+        <div style={{
+          position: 'absolute',
+          top: circleTopMargin,
+          left: circleMarginX,
+          width: circleRadius * 2,
+          height: circleRadius * 2,
+          borderRadius: '50%',
+          border: `1px solid ${colorTheme.accent}`,
+          opacity: 0.35,
+          pointerEvents: 'none',
+        }} />
+        {/* Text below circle */}
+        <div style={{
+          position: 'absolute',
+          top: circleBottom,
+          left: 0, right: 0,
+          bottom: 0,
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          backgroundColor: colorTheme.bg,
+          fontFamily: font.style,
+          padding: '0 20px',
+        }}>
+          {showTitle && <div style={{ fontSize: Math.round(W * 0.072), fontWeight: 700, letterSpacing: '0.15em', color: colorTheme.text, lineHeight: 1, textAlign: 'center' }}>{displayTitle}</div>}
+          <div style={{ width: '52%', height: 1, background: colorTheme.accent, opacity: 0.35, margin: `${Math.round(H * 0.012)}px 0` }} />
+          {showSubtitle && coordLabel && <div style={{ fontSize: Math.round(W * 0.022), color: colorTheme.accent, letterSpacing: '0.15em', textAlign: 'center' }}>{coordLabel}</div>}
+          {showWatermark && <div style={{ fontSize: Math.round(W * 0.015), color: colorTheme.accent, marginTop: Math.round(H * 0.008), opacity: 0.4 }}>wallify.app</div>}
+        </div>
+      </>}
+
+      {/* TYPOGRAPHY */}
+      {layout === 'typography' && (
+        <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}>
+          <defs>
+            <mask id="typo-mask">
+              <rect width="100%" height="100%" fill="white" />
+              <text
+                x="50%" y="50%"
+                textAnchor="middle" dominantBaseline="middle"
+                fontSize={Math.round(W / Math.max(displayTitle.replace(/\s/g, '').length, 2) * 1.6)}
+                fontWeight="900" fontFamily="'Inter', sans-serif"
+                fill="black" letterSpacing="-1"
+              >{displayTitle}</text>
+            </mask>
+          </defs>
+          <rect width="100%" height="100%" fill={colorTheme.bg} mask="url(#typo-mask)" />
+          {showSubtitle && coordLabel && <text x="4%" y="5.5%" fill={colorTheme.text} fontSize={Math.round(W * 0.02)} fontFamily="'Inter', sans-serif" opacity="0.65">{coordLabel}</text>}
+          <line x1="5%" y1="89%" x2="95%" y2="89%" stroke={colorTheme.accent} strokeWidth="0.5" opacity="0.25" />
+          {showWatermark && <text x="50%" y="94%" textAnchor="middle" fill={colorTheme.accent} fontSize={Math.round(W * 0.019)} fontFamily="'Inter', sans-serif" opacity="0.5">wallify.app</text>}
+        </svg>
+      )}
+    </div>
+  )
+
+  // ── Tab bar (mobile + desktop) ─────────────────────────────────────────────
+  const tabs = [
+    { id: 'templates', icon: LayoutTemplate, label: 'Templates' },
+    { id: 'style',     icon: Map,            label: 'Style' },
+    { id: 'colors',    icon: Palette,         label: 'Colors' },
+    { id: 'typography',icon: Type,            label: 'Text' },
+    { id: 'labels',    icon: Eye,             label: 'Labels' },
+  ] as const
+
+  // ── MOBILE LAYOUT ──────────────────────────────────────────────────────────
+  if (isMobile) {
+    return (
+      <div style={{ height: '100dvh', background: '#0a0a0a', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        {/* Mobile top bar */}
+        <header style={{ height: 52, background: '#111', borderBottom: '1px solid #2a2a2a', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', flexShrink: 0 }}>
+          <a href="/" style={{ fontSize: 17, fontWeight: 700, color: '#fff', textDecoration: 'none' }}>Wall<span style={{ color: '#8b5cf6' }}>ify</span></a>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ display: 'flex', background: '#1a1a1a', borderRadius: 7, padding: 2, border: '1px solid #2a2a2a' }}>
+              {(['A4', 'A3'] as const).map(s => (
+                <button key={s} onClick={() => setSize(s)} style={{ padding: '3px 10px', borderRadius: 5, fontSize: 11, fontWeight: 600, cursor: 'pointer', border: 'none', background: size === s ? '#8b5cf6' : 'transparent', color: size === s ? '#fff' : '#6b7280' }}>{s}</button>
+              ))}
+            </div>
+            <button onClick={handleBuyAndDownload} disabled={isPaying} style={{ background: '#8b5cf6', color: '#fff', border: 'none', borderRadius: 8, padding: '7px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+              {isPaying ? '...' : '€5 Buy'}
+            </button>
+          </div>
+        </header>
+
+        {/* City search bar */}
+        <form onSubmit={handleCitySearch} style={{ padding: '8px 16px', borderBottom: '1px solid #1a1a1a', display: 'flex', gap: 8, background: '#0d0d0d' }}>
+          <div style={{ flex: 1, position: 'relative' }}>
+            <MapPin style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', width: 14, height: 14, color: '#6b7280' }} />
+            <input value={cityInput} onChange={e => setCityInput(e.target.value)}
+              style={{ width: '100%', background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 8, paddingLeft: 30, paddingRight: 12, paddingTop: 8, paddingBottom: 8, fontSize: 14, color: '#fff', outline: 'none', boxSizing: 'border-box' }}
+              placeholder="Search city..." />
+          </div>
+          <button type="submit" style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 8, padding: '0 12px', fontSize: 13, color: '#fff', cursor: 'pointer' }}>Go</button>
+        </form>
+
+        {/* Poster canvas */}
+        <main style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#1a1a1a', overflow: 'hidden', padding: '16px 12px' }}>
+          {isLoading
+            ? <div style={{ color: '#6b7280', fontSize: 13 }}>Finding {cityInput}...</div>
+            : <PosterCanvas />}
+        </main>
+
+        {/* Mobile bottom tab bar */}
+        <div style={{ background: '#111', borderTop: '1px solid #2a2a2a', display: 'flex', flexShrink: 0 }}>
+          {tabs.map(({ id, icon: Icon, label }) => (
+            <button key={id}
+              onClick={() => { setActiveTab(id); setPanelOpen(activeTab !== id || !panelOpen) }}
+              style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '10px 0', border: 'none', background: 'transparent', cursor: 'pointer', color: activeTab === id && panelOpen ? '#8b5cf6' : '#6b7280' }}>
+              <Icon style={{ width: 18, height: 18 }} />
+              <span style={{ fontSize: 9 }}>{label}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Mobile bottom panel (slides up) */}
+        {panelOpen && (
+          <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50, background: '#111', borderTop: '2px solid #8b5cf6', maxHeight: '65vh', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', borderBottom: '1px solid #2a2a2a', flexShrink: 0 }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: '#8b5cf6', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{tabs.find(t => t.id === activeTab)?.label}</span>
+              <button onClick={() => setPanelOpen(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#6b7280' }}><X style={{ width: 18, height: 18 }} /></button>
+            </div>
+            <div style={{ overflowY: 'auto', flex: 1 }}>
+              <SidebarContent />
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // ── DESKTOP LAYOUT ─────────────────────────────────────────────────────────
   return (
     <div style={{ height: '100vh', background: '#0a0a0a', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-
-      {/* Top bar */}
-      <header style={{ height: 56, background: '#111111', borderBottom: '1px solid #2a2a2a', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', flexShrink: 0, zIndex: 10 }}>
+      <header style={{ height: 56, background: '#111', borderBottom: '1px solid #2a2a2a', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <a href="/" style={{ fontSize: 18, fontWeight: 700, color: '#fff', textDecoration: 'none', letterSpacing: '-0.02em' }}>Wallify</a>
+          <a href="/" style={{ fontSize: 18, fontWeight: 700, color: '#fff', textDecoration: 'none', letterSpacing: '-0.02em' }}>Wall<span style={{ color: '#8b5cf6' }}>ify</span></a>
           <form onSubmit={handleCitySearch} style={{ display: 'flex', gap: 8 }}>
             <div style={{ position: 'relative' }}>
               <MapPin style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', width: 14, height: 14, color: '#6b7280' }} />
-              <input
-                value={cityInput} onChange={e => setCityInput(e.target.value)}
-                style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 8, paddingLeft: 30, paddingRight: 12, paddingTop: 6, paddingBottom: 6, fontSize: 13, color: '#fff', outline: 'none', width: 180 }}
-                placeholder="City name..."
-              />
+              <input value={cityInput} onChange={e => setCityInput(e.target.value)}
+                style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 8, paddingLeft: 30, paddingRight: 12, paddingTop: 6, paddingBottom: 6, fontSize: 13, color: '#fff', outline: 'none', width: 200 }}
+                placeholder="Search city..." />
             </div>
             <button type="submit" style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 8, padding: '6px 12px', fontSize: 12, color: '#fff', cursor: 'pointer' }}>Search</button>
           </form>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{ display: 'flex', background: '#1a1a1a', borderRadius: 8, padding: 2, border: '1px solid #2a2a2a' }}>
             {(['A4', 'A3'] as const).map(s => (
-              <button key={s} onClick={() => setSize(s)} style={{ padding: '4px 12px', borderRadius: 6, fontSize: 12, fontWeight: 500, cursor: 'pointer', border: 'none', background: size === s ? '#8b5cf6' : 'transparent', color: size === s ? '#fff' : '#6b7280' }}>{s}</button>
+              <button key={s} onClick={() => setSize(s)} style={{ padding: '4px 14px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: 'none', background: size === s ? '#8b5cf6' : 'transparent', color: size === s ? '#fff' : '#6b7280' }}>{s}</button>
             ))}
           </div>
-          <button onClick={handleBuyAndDownload} disabled={isPaying || isLoading} style={{ background: '#8b5cf6', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, opacity: isPaying ? 0.6 : 1 }}>
+          <button onClick={handleBuyAndDownload} disabled={isPaying || isLoading}
+            style={{ background: '#8b5cf6', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 7, opacity: isPaying ? 0.6 : 1 }}>
             <Download style={{ width: 14, height: 14 }} />
             {isPaying ? 'Processing...' : 'Buy & Download — €5'}
           </button>
@@ -236,242 +536,31 @@ export default function MapEditor() {
       </header>
 
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-
         {/* Sidebar */}
-        <aside style={{ width: 280, background: '#111111', borderRight: '1px solid #2a2a2a', display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0 }}>
-          {/* Tabs */}
-          <div style={{ display: 'flex', borderBottom: '1px solid #2a2a2a' }}>
-            {[
-              { id: 'templates', icon: LayoutTemplate, label: 'Templates' },
-              { id: 'style',     icon: Map,            label: 'Style' },
-              { id: 'colors',    icon: Palette,         label: 'Colors' },
-              { id: 'typography',icon: Type,            label: 'Text' },
-              { id: 'labels',    icon: Eye,             label: 'Labels' },
-            ].map(({ id, icon: Icon, label }) => (
-              <button key={id} onClick={() => setActiveTab(id as typeof activeTab)} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '10px 0', fontSize: 10, cursor: 'pointer', border: 'none', background: 'transparent', color: activeTab === id ? '#8b5cf6' : '#6b7280', borderBottom: activeTab === id ? '2px solid #8b5cf6' : '2px solid transparent' }}>
+        <aside style={{ width: 276, background: '#111', borderRight: '1px solid #2a2a2a', display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0 }}>
+          <div style={{ display: 'flex', borderBottom: '1px solid #2a2a2a', flexShrink: 0 }}>
+            {tabs.map(({ id, icon: Icon, label }) => (
+              <button key={id} onClick={() => setActiveTab(id)}
+                style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '10px 0', fontSize: 9, cursor: 'pointer', border: 'none', background: 'transparent', color: activeTab === id ? '#8b5cf6' : '#6b7280', borderBottom: activeTab === id ? '2px solid #8b5cf6' : '2px solid transparent' }}>
                 <Icon style={{ width: 14, height: 14 }} />
                 {label}
               </button>
             ))}
           </div>
-
-          <div style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
-
-            {/* TEMPLATES */}
-            {activeTab === 'templates' && (
-              <div>
-                <p style={{ fontSize: 10, color: '#6b7280', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>Presets</p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {TEMPLATES.map(tpl => {
-                    const theme = COLOR_THEMES.find(c => c.id === tpl.colorTheme)!
-                    const ms = MAP_STYLES.find(m => m.id === tpl.mapStyle)!
-                    return (
-                      <button key={tpl.id} onClick={() => applyTemplate(tpl)} style={{ textAlign: 'left', borderRadius: 12, border: '1px solid #2a2a2a', overflow: 'hidden', cursor: 'pointer', background: 'transparent', padding: 0, transition: 'border-color 0.15s' }}
-                        onMouseEnter={e => (e.currentTarget.style.borderColor = '#8b5cf6')}
-                        onMouseLeave={e => (e.currentTarget.style.borderColor = '#2a2a2a')}
-                      >
-                        {/* Mini preview */}
-                        <div style={{ height: 52, position: 'relative', backgroundColor: theme.bg, overflow: 'hidden' }}>
-                          {/* Fake map */}
-                          <div style={{ position: 'absolute', inset: 0, bottom: tpl.layout === 'split' ? '28%' : 0, background: ms.thumb, filter: ms.filter === 'none' ? undefined : ms.filter }} />
-                          {/* Circle clip */}
-                          {tpl.layout === 'circle' && <div style={{ position: 'absolute', top: '5%', left: '15%', right: '15%', bottom: '28%', borderRadius: '50%', background: ms.thumb, filter: ms.filter === 'none' ? undefined : ms.filter, overflow: 'hidden' }} />}
-                          {/* Typography overlay */}
-                          {tpl.layout === 'typography' && (
-                            <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}>
-                              <defs><mask id={`pm-${tpl.id}`}><rect width="100%" height="100%" fill="white" /><text x="50%" y="55%" textAnchor="middle" dominantBaseline="middle" fontSize="32" fontWeight="900" fontFamily="Inter" fill="black">CITY</text></mask></defs>
-                              <rect width="100%" height="100%" fill={theme.bg} mask={`url(#pm-${tpl.id})`} />
-                            </svg>
-                          )}
-                          {/* Split bar */}
-                          {tpl.layout === 'split' && <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '28%', backgroundColor: theme.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span style={{ fontSize: 6, fontWeight: 700, letterSpacing: '0.15em', color: theme.text }}>CITY NAME</span></div>}
-                          {/* Full bleed */}
-                          {tpl.layout === 'fullbleed' && <><div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.65) 0%, transparent 60%)' }} /><div style={{ position: 'absolute', bottom: 5, left: 0, right: 0, textAlign: 'center', fontSize: 7, fontWeight: 700, letterSpacing: '0.12em', color: '#fff' }}>CITY NAME</div></>}
-                        </div>
-                        <div style={{ padding: '6px 10px 8px', background: '#0d0d0d', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                          <div>
-                            <div style={{ fontSize: 11, fontWeight: 600, color: '#fff' }}>{tpl.name}</div>
-                            <div style={{ fontSize: 9, color: '#6b7280', marginTop: 1, lineHeight: 1.3 }}>{tpl.desc}</div>
-                          </div>
-                          <span style={{ fontSize: 9, color: '#8b5cf6', border: '1px solid #8b5cf620', borderRadius: 4, padding: '2px 5px', whiteSpace: 'nowrap', flexShrink: 0 }}>{layoutLabel[tpl.layout]}</span>
-                        </div>
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* STYLE */}
-            {activeTab === 'style' && (
-              <div>
-                <p style={{ fontSize: 10, color: '#6b7280', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>Map Color</p>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, marginBottom: 20 }}>
-                  {MAP_STYLES.map(s => (
-                    <button key={s.id} onClick={() => setActiveStyle(s)} title={s.name} style={{ padding: 0, border: `2px solid ${activeStyle.id === s.id ? '#8b5cf6' : 'transparent'}`, borderRadius: 10, cursor: 'pointer', background: 'transparent', overflow: 'hidden' }}>
-                      <div style={{ height: 44, background: s.thumb, filter: s.filter === 'none' ? undefined : s.filter, position: 'relative' }}>
-                        {/* Road lines */}
-                        <div style={{ position: 'absolute', top: '45%', left: 0, right: 0, height: 2, background: 'rgba(255,255,255,0.35)' }} />
-                        <div style={{ position: 'absolute', top: '70%', left: 0, right: 0, height: 1, background: 'rgba(255,255,255,0.2)' }} />
-                        <div style={{ position: 'absolute', left: '40%', top: 0, bottom: 0, width: 2, background: 'rgba(255,255,255,0.3)' }} />
-                      </div>
-                      <div style={{ fontSize: 8, color: '#9ca3af', textAlign: 'center', padding: '3px 2px', background: '#0d0d0d', lineHeight: 1.2 }}>{s.name}</div>
-                    </button>
-                  ))}
-                </div>
-                <p style={{ fontSize: 10, color: '#6b7280', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>Layout</p>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 20 }}>
-                  {([['split','Split'], ['fullbleed','Full Bleed'], ['circle','Circle'], ['typography','Typography']] as [Layout, string][]).map(([id, label]) => (
-                    <button key={id} onClick={() => setLayout(id)} style={{ padding: '8px 4px', borderRadius: 8, border: `1px solid ${layout === id ? '#8b5cf6' : '#2a2a2a'}`, background: layout === id ? '#8b5cf610' : 'transparent', color: layout === id ? '#8b5cf6' : '#6b7280', fontSize: 11, cursor: 'pointer', fontWeight: 500 }}>{label}</button>
-                  ))}
-                </div>
-                <p style={{ fontSize: 10, color: '#6b7280', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>Zoom</p>
-                <input type="range" min="8" max="16" value={zoom} onChange={e => { const z = Number(e.target.value); setZoom(z); if (mapRef.current) mapRef.current.setZoom(z) }} style={{ width: '100%', accentColor: '#8b5cf6' }} />
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#6b7280', marginTop: 4 }}>
-                  <span>Wide</span><span>Close</span>
-                </div>
-              </div>
-            )}
-
-            {/* COLORS */}
-            {activeTab === 'colors' && (
-              <div>
-                <p style={{ fontSize: 10, color: '#6b7280', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>Frame Color</p>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                  {COLOR_THEMES.map(t => (
-                    <button key={t.id} onClick={() => setColorTheme(t)} style={{ padding: '10px 12px', borderRadius: 10, border: `1px solid ${colorTheme.id === t.id ? '#8b5cf6' : '#2a2a2a'}`, background: t.bg, cursor: 'pointer', textAlign: 'left' }}>
-                      <div style={{ fontSize: 11, fontWeight: 600, color: t.text }}>{t.label}</div>
-                      <div style={{ fontSize: 9, color: t.accent, marginTop: 2 }}>Aa · {t.accent}</div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* TEXT */}
-            {activeTab === 'typography' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <div>
-                  <p style={{ fontSize: 10, color: '#6b7280', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>Custom Title</p>
-                  <input value={customTitle} onChange={e => setCustomTitle(e.target.value)} placeholder={city.toUpperCase()} style={{ width: '100%', background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: '#fff', outline: 'none', boxSizing: 'border-box' }} />
-                </div>
-                <div>
-                  <p style={{ fontSize: 10, color: '#6b7280', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>Font</p>
-                  {FONTS.map(f => (
-                    <button key={f.id} onClick={() => setFont(f)} style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: `1px solid ${font.id === f.id ? '#8b5cf6' : '#2a2a2a'}`, background: font.id === f.id ? '#8b5cf610' : 'transparent', color: '#fff', fontSize: 13, cursor: 'pointer', textAlign: 'left', marginBottom: 6, fontFamily: f.style }}>{f.name}</button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* LABELS */}
-            {activeTab === 'labels' && (
-              <div>
-                <p style={{ fontSize: 10, color: '#6b7280', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>Visible Elements</p>
-                {[
-                  { label: 'City Title', value: showTitle, setter: setShowTitle },
-                  { label: 'Coordinates', value: showSubtitle, setter: setShowSubtitle },
-                  { label: 'Watermark', value: showCoords, setter: setShowCoords },
-                ].map(({ label, value, setter }) => (
-                  <div key={label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-                    <span style={{ fontSize: 13, color: '#fff' }}>{label}</span>
-                    <button onClick={() => setter(!value)} style={{ width: 40, height: 22, borderRadius: 11, border: 'none', background: value ? '#8b5cf6' : '#2a2a2a', cursor: 'pointer', position: 'relative', flexShrink: 0 }}>
-                      <span style={{ position: 'absolute', top: 2, width: 18, height: 18, background: '#fff', borderRadius: '50%', transition: 'left 0.15s', left: value ? '20px' : '2px' }} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-
+          <div style={{ flex: 1, overflowY: 'auto' }}>
+            <SidebarContent />
           </div>
         </aside>
 
-        {/* Canvas */}
+        {/* Canvas area */}
         <main style={{ flex: 1, background: '#1a1a1a', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'auto', padding: 32 }}>
-          {isLoading ? (
-            <div style={{ color: '#6b7280', fontSize: 14 }}>Finding {cityInput}...</div>
-          ) : (
-            <div ref={posterRef} style={{ position: 'relative', width: W, height: H, backgroundColor: colorTheme.bg, boxShadow: '0 32px 80px rgba(0,0,0,0.6)', overflow: 'hidden', flexShrink: 0 }}>
-
-              {/* Map */}
-              <div id="map-container" style={mapContainerStyle} />
-
-              {/* SPLIT layout */}
-              {layout === 'split' && (
-                <>
-                  <div style={{ position: 'absolute', top: '78%', left: 0, right: 0, height: 1, background: colorTheme.accent, opacity: 0.2 }} />
-                  <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '22%', backgroundColor: colorTheme.bg, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '0 28px', fontFamily: font.style }}>
-                    {showTitle && <div style={{ fontSize: Math.round(W * 0.072), fontWeight: 700, letterSpacing: '0.15em', lineHeight: 1.05, textAlign: 'center', color: colorTheme.text }}>{displayTitle}</div>}
-                    {showSubtitle && coordLabel && <div style={{ fontSize: Math.round(W * 0.024), color: colorTheme.accent, letterSpacing: '0.2em', marginTop: 5, textTransform: 'uppercase' }}>{coordLabel}</div>}
-                    {showCoords && <div style={{ fontSize: Math.round(W * 0.016), color: colorTheme.accent, marginTop: 5, letterSpacing: '0.1em', opacity: 0.45 }}>wallify.app</div>}
-                  </div>
-                </>
-              )}
-
-              {/* FULL BLEED layout */}
-              {layout === 'fullbleed' && (
-                <>
-                  <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '42%', background: 'linear-gradient(to top, rgba(0,0,0,0.78) 0%, transparent 100%)', pointerEvents: 'none' }} />
-                  <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', padding: `0 28px ${Math.round(H * 0.06)}px`, fontFamily: font.style }}>
-                    {showTitle && <div style={{ fontSize: Math.round(W * 0.072), fontWeight: 700, letterSpacing: '0.15em', lineHeight: 1.05, textAlign: 'center', color: '#fff', textShadow: '0 2px 16px rgba(0,0,0,0.9)' }}>{displayTitle}</div>}
-                    {showSubtitle && coordLabel && <div style={{ fontSize: Math.round(W * 0.024), color: 'rgba(255,255,255,0.7)', letterSpacing: '0.2em', marginTop: 6, textTransform: 'uppercase' }}>{coordLabel}</div>}
-                    {showCoords && <div style={{ fontSize: Math.round(W * 0.016), color: 'rgba(255,255,255,0.35)', marginTop: 8, letterSpacing: '0.1em' }}>wallify.app</div>}
-                  </div>
-                </>
-              )}
-
-              {/* CIRCLE layout */}
-              {layout === 'circle' && (
-                <>
-                  {/* Circle border */}
-                  <div style={{ position: 'absolute', top: `${Math.round(H * 0.035)}px`, left: `${Math.round(W * 0.08)}px`, right: `${Math.round(W * 0.08)}px`, aspectRatio: '1', borderRadius: '50%', border: `1px solid ${colorTheme.accent}`, opacity: 0.3, pointerEvents: 'none' }} />
-                  {/* Bottom text */}
-                  <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '22%', backgroundColor: colorTheme.bg, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 0, fontFamily: font.style }}>
-                    {showTitle && <div style={{ fontSize: Math.round(W * 0.072), fontWeight: 700, letterSpacing: '0.15em', color: colorTheme.text, lineHeight: 1 }}>{displayTitle}</div>}
-                    <div style={{ width: '55%', height: 1, background: colorTheme.accent, opacity: 0.35, margin: '6px 0' }} />
-                    {showSubtitle && coordLabel && <div style={{ fontSize: Math.round(W * 0.022), color: colorTheme.accent, letterSpacing: '0.18em' }}>{coordLabel}</div>}
-                    {showCoords && <div style={{ fontSize: Math.round(W * 0.015), color: colorTheme.accent, marginTop: 4, opacity: 0.4, letterSpacing: '0.08em' }}>wallify.app</div>}
-                  </div>
-                </>
-              )}
-
-              {/* TYPOGRAPHY layout */}
-              {layout === 'typography' && (
-                <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', overflow: 'visible' }}>
-                  <defs>
-                    <mask id="typo-mask">
-                      <rect width="100%" height="100%" fill="white" />
-                      <text
-                        x="50%" y="52%"
-                        textAnchor="middle" dominantBaseline="middle"
-                        fontSize={Math.round(W / Math.max(displayTitle.length, 3) * 1.55)}
-                        fontWeight="900"
-                        fontFamily="'Inter', sans-serif"
-                        fill="black"
-                        letterSpacing="-1"
-                      >
-                        {displayTitle}
-                      </text>
-                    </mask>
-                  </defs>
-                  {/* Colored overlay with text cut out */}
-                  <rect width="100%" height="100%" fill={colorTheme.bg} mask="url(#typo-mask)" />
-                  {/* Top-left coordinates */}
-                  {showSubtitle && coordLabel && (
-                    <text x="4%" y="5%" fill={colorTheme.text} fontSize={Math.round(W * 0.022)} fontFamily="'Inter', sans-serif" opacity="0.7">{coordLabel}</text>
-                  )}
-                  {/* Bottom info */}
-                  <line x1="5%" y1="88%" x2="95%" y2="88%" stroke={colorTheme.accent} strokeWidth="0.5" opacity="0.3" />
-                  {showCoords && (
-                    <text x="50%" y="93%" textAnchor="middle" fill={colorTheme.accent} fontSize={Math.round(W * 0.02)} fontFamily="'Inter', sans-serif" opacity="0.6">wallify.app</text>
-                  )}
-                </svg>
-              )}
-
-            </div>
-          )}
+          {isLoading
+            ? <div style={{ color: '#6b7280', fontSize: 14 }}>Finding {cityInput}...</div>
+            : <PosterCanvas />}
         </main>
       </div>
     </div>
   )
 }
+
+const labelStyle: React.CSSProperties = { fontSize: 10, color: '#6b7280', marginBottom: 10, marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }
