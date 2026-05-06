@@ -91,15 +91,22 @@ export default function MapEditor() {
   const [isMobile, setIsMobile] = useState(false)
   const [panelOpen, setPanelOpen] = useState(false)
 
+  const [windowSize, setWindowSize] = useState({ w: 1200, h: 800 })
+
   const posterRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<any>(null)
   const leafletRef = useRef<any>(null)
 
   useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768)
-    check()
-    window.addEventListener('resize', check)
-    return () => window.removeEventListener('resize', check)
+    const update = () => {
+      const w = window.innerWidth
+      const h = window.innerHeight
+      setIsMobile(w < 768)
+      setWindowSize({ w, h })
+    }
+    update()
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
   }, [])
 
   const geocodeCity = useCallback(async (cityName: string) => {
@@ -135,7 +142,7 @@ export default function MapEditor() {
     }
     initMap()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [coords])
+  }, [coords, isMobile])
 
   useEffect(() => {
     if (!mapRef.current || !leafletRef.current) return
@@ -181,8 +188,11 @@ export default function MapEditor() {
 
   // Poster display dimensions
   const posterDims = POSTER_SIZES[size]
-  const availH = isMobile ? Math.min(window?.innerHeight ?? 700, 500) - 120 : 700
-  const scale = availH / posterDims.height
+  const availH = isMobile ? windowSize.h - 180 : 700
+  const availW = isMobile ? windowSize.w - 24 : 9999
+  const scaleH = availH / posterDims.height
+  const scaleW = availW / posterDims.width
+  const scale = Math.min(scaleH, scaleW)
   const W = Math.round(posterDims.width * scale)
   const H = Math.round(posterDims.height * scale)
 
@@ -431,7 +441,6 @@ export default function MapEditor() {
     </div>
   )
 
-  // ── Tab bar (mobile + desktop) ─────────────────────────────────────────────
   const tabs = [
     { id: 'templates', icon: LayoutTemplate, label: 'Templates' },
     { id: 'style',     icon: Map,            label: 'Style' },
@@ -440,125 +449,174 @@ export default function MapEditor() {
     { id: 'labels',    icon: Eye,             label: 'Labels' },
   ] as const
 
-  // ── MOBILE LAYOUT ──────────────────────────────────────────────────────────
-  if (isMobile) {
-    return (
-      <div style={{ height: '100dvh', background: '#0a0a0a', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        {/* Mobile top bar */}
-        <header style={{ height: 52, background: '#111', borderBottom: '1px solid #2a2a2a', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', flexShrink: 0 }}>
-          <a href="/" style={{ fontSize: 17, fontWeight: 700, color: '#fff', textDecoration: 'none' }}>Wall<span style={{ color: '#8b5cf6' }}>ify</span></a>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ display: 'flex', background: '#1a1a1a', borderRadius: 7, padding: 2, border: '1px solid #2a2a2a' }}>
-              {(['A4', 'A3'] as const).map(s => (
-                <button key={s} onClick={() => setSize(s)} style={{ padding: '3px 10px', borderRadius: 5, fontSize: 11, fontWeight: 600, cursor: 'pointer', border: 'none', background: size === s ? '#8b5cf6' : 'transparent', color: size === s ? '#fff' : '#6b7280' }}>{s}</button>
-              ))}
-            </div>
-            <button onClick={handleBuyAndDownload} disabled={isPaying} style={{ background: '#8b5cf6', color: '#fff', border: 'none', borderRadius: 8, padding: '7px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-              {isPaying ? '...' : '€5 Buy'}
-            </button>
-          </div>
-        </header>
+  // Single unified render tree — #map-container never unmounts when switching mobile/desktop
+  return (
+    <div style={{ height: '100dvh', background: '#0a0a0a', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
-        {/* City search bar */}
-        <form onSubmit={handleCitySearch} style={{ padding: '8px 16px', borderBottom: '1px solid #1a1a1a', display: 'flex', gap: 8, background: '#0d0d0d' }}>
+      {/* ── Top bar ── */}
+      <header style={{ height: isMobile ? 52 : 56, background: '#111', borderBottom: '1px solid #2a2a2a', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <a href="/" style={{ fontSize: isMobile ? 17 : 18, fontWeight: 700, color: '#fff', textDecoration: 'none', letterSpacing: '-0.02em' }}>
+            Wall<span style={{ color: '#8b5cf6' }}>ify</span>
+          </a>
+          {/* Desktop city search in header */}
+          {!isMobile && (
+            <form onSubmit={handleCitySearch} style={{ display: 'flex', gap: 8 }}>
+              <div style={{ position: 'relative' }}>
+                <MapPin style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', width: 14, height: 14, color: '#6b7280' }} />
+                <input value={cityInput} onChange={e => setCityInput(e.target.value)}
+                  style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 8, paddingLeft: 30, paddingRight: 12, paddingTop: 6, paddingBottom: 6, fontSize: 13, color: '#fff', outline: 'none', width: 200 }}
+                  placeholder="Search city..." />
+              </div>
+              <button type="submit" style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 8, padding: '6px 12px', fontSize: 12, color: '#fff', cursor: 'pointer' }}>Search</button>
+            </form>
+          )}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', background: '#1a1a1a', borderRadius: 7, padding: 2, border: '1px solid #2a2a2a' }}>
+            {(['A4', 'A3'] as const).map(s => (
+              <button key={s} onClick={() => setSize(s)} style={{ padding: isMobile ? '3px 10px' : '4px 14px', borderRadius: 6, fontSize: isMobile ? 11 : 12, fontWeight: 600, cursor: 'pointer', border: 'none', background: size === s ? '#8b5cf6' : 'transparent', color: size === s ? '#fff' : '#6b7280' }}>{s}</button>
+            ))}
+          </div>
+          <button onClick={handleBuyAndDownload} disabled={isPaying || isLoading}
+            style={{ background: '#8b5cf6', color: '#fff', border: 'none', borderRadius: 8, padding: isMobile ? '7px 12px' : '8px 18px', fontSize: isMobile ? 12 : 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, opacity: isPaying ? 0.6 : 1 }}>
+            <Download style={{ width: 14, height: 14 }} />
+            {isPaying ? '...' : isMobile ? '€5' : 'Buy & Download — €5'}
+          </button>
+        </div>
+      </header>
+
+      {/* Mobile city search row */}
+      {isMobile && (
+        <form onSubmit={handleCitySearch} style={{ padding: '8px 12px', borderBottom: '1px solid #1a1a1a', display: 'flex', gap: 8, background: '#0d0d0d', flexShrink: 0 }}>
           <div style={{ flex: 1, position: 'relative' }}>
             <MapPin style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', width: 14, height: 14, color: '#6b7280' }} />
             <input value={cityInput} onChange={e => setCityInput(e.target.value)}
               style={{ width: '100%', background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 8, paddingLeft: 30, paddingRight: 12, paddingTop: 8, paddingBottom: 8, fontSize: 14, color: '#fff', outline: 'none', boxSizing: 'border-box' }}
               placeholder="Search city..." />
           </div>
-          <button type="submit" style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 8, padding: '0 12px', fontSize: 13, color: '#fff', cursor: 'pointer' }}>Go</button>
+          <button type="submit" style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 8, padding: '0 14px', fontSize: 13, color: '#fff', cursor: 'pointer' }}>Go</button>
         </form>
+      )}
 
-        {/* Poster canvas */}
-        <main style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#1a1a1a', overflow: 'hidden', padding: '16px 12px' }}>
-          {isLoading
-            ? <div style={{ color: '#6b7280', fontSize: 13 }}>Finding {cityInput}...</div>
-            : <PosterCanvas />}
+      {/* ── Main body ── */}
+      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+
+        {/* Desktop sidebar */}
+        {!isMobile && (
+          <aside style={{ width: 276, background: '#111', borderRight: '1px solid #2a2a2a', display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0 }}>
+            <div style={{ display: 'flex', borderBottom: '1px solid #2a2a2a', flexShrink: 0 }}>
+              {tabs.map(({ id, icon: Icon, label }) => (
+                <button key={id} onClick={() => setActiveTab(id)}
+                  style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '10px 0', fontSize: 9, cursor: 'pointer', border: 'none', background: 'transparent', color: activeTab === id ? '#8b5cf6' : '#6b7280', borderBottom: activeTab === id ? '2px solid #8b5cf6' : '2px solid transparent' }}>
+                  <Icon style={{ width: 14, height: 14 }} />
+                  {label}
+                </button>
+              ))}
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto' }}>
+              <SidebarContent />
+            </div>
+          </aside>
+        )}
+
+        {/* ── Canvas area — always in DOM ── */}
+        <main style={{ flex: 1, background: '#1a1a1a', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: isMobile ? '12px' : '32px' }}>
+          {isLoading ? (
+            <div style={{ color: '#6b7280', fontSize: 13 }}>Finding {cityInput}...</div>
+          ) : (
+            <div ref={posterRef}
+              style={{ position: 'relative', width: W, height: H, backgroundColor: colorTheme.bg, boxShadow: '0 24px 64px rgba(0,0,0,0.6)', overflow: 'hidden', flexShrink: 0 }}
+            >
+              {/* Map — always present, never unmounts */}
+              <div id="map-container" style={mapStyle} />
+
+              {/* SPLIT */}
+              {layout === 'split' && <>
+                <div style={{ position: 'absolute', top: '78%', left: 0, right: 0, height: 1, background: colorTheme.accent, opacity: 0.2 }} />
+                <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '22%', backgroundColor: colorTheme.bg, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '0 28px', fontFamily: font.style }}>
+                  {showTitle && <div style={{ fontSize: Math.round(W * 0.072), fontWeight: 700, letterSpacing: '0.15em', lineHeight: 1.05, textAlign: 'center', color: colorTheme.text }}>{displayTitle}</div>}
+                  {showSubtitle && coordLabel && <div style={{ fontSize: Math.round(W * 0.024), color: colorTheme.accent, letterSpacing: '0.2em', marginTop: 5, textTransform: 'uppercase' }}>{coordLabel}</div>}
+                  {showWatermark && <div style={{ fontSize: Math.round(W * 0.016), color: colorTheme.accent, marginTop: 5, letterSpacing: '0.1em', opacity: 0.45 }}>wallify.app</div>}
+                </div>
+              </>}
+
+              {/* FULL BLEED */}
+              {layout === 'fullbleed' && <>
+                <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '45%', background: 'linear-gradient(to top, rgba(0,0,0,0.82) 0%, transparent 100%)', pointerEvents: 'none' }} />
+                <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', padding: `0 28px ${Math.round(H * 0.065)}px`, fontFamily: font.style }}>
+                  {showTitle && <div style={{ fontSize: Math.round(W * 0.072), fontWeight: 700, letterSpacing: '0.15em', lineHeight: 1.05, textAlign: 'center', color: '#fff', textShadow: '0 2px 20px rgba(0,0,0,0.9)' }}>{displayTitle}</div>}
+                  {showSubtitle && coordLabel && <div style={{ fontSize: Math.round(W * 0.024), color: 'rgba(255,255,255,0.72)', letterSpacing: '0.2em', marginTop: 7, textTransform: 'uppercase' }}>{coordLabel}</div>}
+                  {showWatermark && <div style={{ fontSize: Math.round(W * 0.016), color: 'rgba(255,255,255,0.32)', marginTop: 8, letterSpacing: '0.1em' }}>wallify.app</div>}
+                </div>
+              </>}
+
+              {/* CIRCLE */}
+              {layout === 'circle' && <>
+                <div style={{ position: 'absolute', top: circleTopMargin, left: circleMarginX, width: circleRadius * 2, height: circleRadius * 2, borderRadius: '50%', border: `1px solid ${colorTheme.accent}`, opacity: 0.35, pointerEvents: 'none' }} />
+                <div style={{ position: 'absolute', top: circleBottom, left: 0, right: 0, bottom: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: colorTheme.bg, fontFamily: font.style, padding: '0 20px' }}>
+                  {showTitle && <div style={{ fontSize: Math.round(W * 0.072), fontWeight: 700, letterSpacing: '0.15em', color: colorTheme.text, lineHeight: 1, textAlign: 'center' }}>{displayTitle}</div>}
+                  <div style={{ width: '52%', height: 1, background: colorTheme.accent, opacity: 0.35, margin: `${Math.round(H * 0.012)}px 0` }} />
+                  {showSubtitle && coordLabel && <div style={{ fontSize: Math.round(W * 0.022), color: colorTheme.accent, letterSpacing: '0.15em', textAlign: 'center' }}>{coordLabel}</div>}
+                  {showWatermark && <div style={{ fontSize: Math.round(W * 0.015), color: colorTheme.accent, marginTop: Math.round(H * 0.008), opacity: 0.4 }}>wallify.app</div>}
+                </div>
+              </>}
+
+              {/* TYPOGRAPHY */}
+              {layout === 'typography' && (
+                <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}>
+                  <defs>
+                    <mask id="typo-mask">
+                      <rect width="100%" height="100%" fill="white" />
+                      <text x="50%" y="50%" textAnchor="middle" dominantBaseline="middle"
+                        fontSize={Math.round(W / Math.max(displayTitle.replace(/\s/g, '').length, 2) * 1.6)}
+                        fontWeight="900" fontFamily="'Inter', sans-serif" fill="black" letterSpacing="-1">
+                        {displayTitle}
+                      </text>
+                    </mask>
+                  </defs>
+                  <rect width="100%" height="100%" fill={colorTheme.bg} mask="url(#typo-mask)" />
+                  {showSubtitle && coordLabel && <text x="4%" y="5.5%" fill={colorTheme.text} fontSize={Math.round(W * 0.02)} fontFamily="'Inter', sans-serif" opacity="0.65">{coordLabel}</text>}
+                  <line x1="5%" y1="89%" x2="95%" y2="89%" stroke={colorTheme.accent} strokeWidth="0.5" opacity="0.25" />
+                  {showWatermark && <text x="50%" y="94%" textAnchor="middle" fill={colorTheme.accent} fontSize={Math.round(W * 0.019)} fontFamily="'Inter', sans-serif" opacity="0.5">wallify.app</text>}
+                </svg>
+              )}
+            </div>
+          )}
         </main>
+      </div>
 
-        {/* Mobile bottom tab bar */}
-        <div style={{ background: '#111', borderTop: '1px solid #2a2a2a', display: 'flex', flexShrink: 0 }}>
+      {/* ── Mobile bottom tab bar ── */}
+      {isMobile && (
+        <div style={{ background: '#111', borderTop: '1px solid #2a2a2a', display: 'flex', flexShrink: 0, zIndex: 20 }}>
           {tabs.map(({ id, icon: Icon, label }) => (
             <button key={id}
               onClick={() => { setActiveTab(id); setPanelOpen(activeTab !== id || !panelOpen) }}
-              style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '10px 0', border: 'none', background: 'transparent', cursor: 'pointer', color: activeTab === id && panelOpen ? '#8b5cf6' : '#6b7280' }}>
+              style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '10px 0 8px', border: 'none', background: 'transparent', cursor: 'pointer', color: activeTab === id && panelOpen ? '#8b5cf6' : '#6b7280' }}>
               <Icon style={{ width: 18, height: 18 }} />
               <span style={{ fontSize: 9 }}>{label}</span>
             </button>
           ))}
         </div>
+      )}
 
-        {/* Mobile bottom panel (slides up) */}
-        {panelOpen && (
-          <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50, background: '#111', borderTop: '2px solid #8b5cf6', maxHeight: '65vh', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', borderBottom: '1px solid #2a2a2a', flexShrink: 0 }}>
-              <span style={{ fontSize: 12, fontWeight: 600, color: '#8b5cf6', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{tabs.find(t => t.id === activeTab)?.label}</span>
-              <button onClick={() => setPanelOpen(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#6b7280' }}><X style={{ width: 18, height: 18 }} /></button>
-            </div>
-            <div style={{ overflowY: 'auto', flex: 1 }}>
-              <SidebarContent />
-            </div>
+      {/* ── Mobile slide-up panel ── */}
+      {isMobile && panelOpen && (
+        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50, background: '#111', borderTop: '2px solid #8b5cf6', maxHeight: '65dvh', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', borderBottom: '1px solid #2a2a2a', flexShrink: 0 }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: '#8b5cf6', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+              {tabs.find(t => t.id === activeTab)?.label}
+            </span>
+            <button onClick={() => setPanelOpen(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#6b7280' }}>
+              <X style={{ width: 18, height: 18 }} />
+            </button>
           </div>
-        )}
-      </div>
-    )
-  }
-
-  // ── DESKTOP LAYOUT ─────────────────────────────────────────────────────────
-  return (
-    <div style={{ height: '100vh', background: '#0a0a0a', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      <header style={{ height: 56, background: '#111', borderBottom: '1px solid #2a2a2a', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <a href="/" style={{ fontSize: 18, fontWeight: 700, color: '#fff', textDecoration: 'none', letterSpacing: '-0.02em' }}>Wall<span style={{ color: '#8b5cf6' }}>ify</span></a>
-          <form onSubmit={handleCitySearch} style={{ display: 'flex', gap: 8 }}>
-            <div style={{ position: 'relative' }}>
-              <MapPin style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', width: 14, height: 14, color: '#6b7280' }} />
-              <input value={cityInput} onChange={e => setCityInput(e.target.value)}
-                style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 8, paddingLeft: 30, paddingRight: 12, paddingTop: 6, paddingBottom: 6, fontSize: 13, color: '#fff', outline: 'none', width: 200 }}
-                placeholder="Search city..." />
-            </div>
-            <button type="submit" style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 8, padding: '6px 12px', fontSize: 12, color: '#fff', cursor: 'pointer' }}>Search</button>
-          </form>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ display: 'flex', background: '#1a1a1a', borderRadius: 8, padding: 2, border: '1px solid #2a2a2a' }}>
-            {(['A4', 'A3'] as const).map(s => (
-              <button key={s} onClick={() => setSize(s)} style={{ padding: '4px 14px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: 'none', background: size === s ? '#8b5cf6' : 'transparent', color: size === s ? '#fff' : '#6b7280' }}>{s}</button>
-            ))}
-          </div>
-          <button onClick={handleBuyAndDownload} disabled={isPaying || isLoading}
-            style={{ background: '#8b5cf6', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 7, opacity: isPaying ? 0.6 : 1 }}>
-            <Download style={{ width: 14, height: 14 }} />
-            {isPaying ? 'Processing...' : 'Buy & Download — €5'}
-          </button>
-        </div>
-      </header>
-
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-        {/* Sidebar */}
-        <aside style={{ width: 276, background: '#111', borderRight: '1px solid #2a2a2a', display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0 }}>
-          <div style={{ display: 'flex', borderBottom: '1px solid #2a2a2a', flexShrink: 0 }}>
-            {tabs.map(({ id, icon: Icon, label }) => (
-              <button key={id} onClick={() => setActiveTab(id)}
-                style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '10px 0', fontSize: 9, cursor: 'pointer', border: 'none', background: 'transparent', color: activeTab === id ? '#8b5cf6' : '#6b7280', borderBottom: activeTab === id ? '2px solid #8b5cf6' : '2px solid transparent' }}>
-                <Icon style={{ width: 14, height: 14 }} />
-                {label}
-              </button>
-            ))}
-          </div>
-          <div style={{ flex: 1, overflowY: 'auto' }}>
+          <div style={{ overflowY: 'auto', flex: 1 }}>
             <SidebarContent />
           </div>
-        </aside>
+        </div>
+      )}
 
-        {/* Canvas area */}
-        <main style={{ flex: 1, background: '#1a1a1a', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'auto', padding: 32 }}>
-          {isLoading
-            ? <div style={{ color: '#6b7280', fontSize: 14 }}>Finding {cityInput}...</div>
-            : <PosterCanvas />}
-        </main>
-      </div>
     </div>
   )
 }
