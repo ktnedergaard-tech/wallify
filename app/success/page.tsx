@@ -42,7 +42,8 @@ function SuccessContent() {
       const width = posterSize === "A4" ? 210 : 297;
       const height = posterSize === "A4" ? 297 : 420;
 
-      pdf.addImage(dataUrl, "PNG", 0, 0, width, height);
+      const imgFormat = dataUrl.startsWith("data:image/jpeg") ? "JPEG" : "PNG"
+      pdf.addImage(dataUrl, imgFormat, 0, 0, width, height);
       pdf.save(`wallify-${city.toLowerCase().replace(/\s+/g, '-')}-${posterSize.toLowerCase()}.pdf`);
 
       setDownloaded(true);

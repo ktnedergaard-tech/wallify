@@ -86,6 +86,7 @@ export default function MapEditor() {
   const [customTitle, setCustomTitle] = useState('')
   const [layout, setLayout] = useState<Layout>('split')
   const [activeTab, setActiveTab] = useState<'templates' | 'style' | 'colors' | 'typography' | 'labels'>('templates')
+  const [promoCode, setPromoCode] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isPaying, setIsPaying] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
@@ -173,15 +174,58 @@ export default function MapEditor() {
     setIsPaying(true)
     try {
       const { default: html2canvas } = await import('html2canvas')
-      const canvas = await html2canvas(posterRef.current!, { scale: 2, useCORS: true, allowTaint: true })
-      const dataUrl = canvas.toDataURL('image/png')
+
+      // Scale to 300 DPI: A4 = 2480×3508px, A3 = 3508×4961px
+      const printWidths = { A4: 2480, A3: 3508 }
+      const printHeights = { A4: 3508, A3: 4961 }
+      const printScale = Math.ceil(printWidths[size] / W)
+
+      const canvas = await html2canvas(posterRef.current!, {
+        scale: printScale,
+        useCORS: true,
+        allowTaint: true,
+        width: W,
+        height: H,
+      })
+
+      const isFree = promoCode.toLowerCase().trim() === 'free'
+
+      if (isFree) {
+        // Free flow: generate PDF directly, no Stripe
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.92)
+        const { default: jsPDF } = await import('jspdf')
+        const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: size.toLowerCase() as 'a4' | 'a3' })
+        const w = size === 'A4' ? 210 : 297
+        const h = size === 'A4' ? 297 : 420
+        pdf.addImage(dataUrl, 'JPEG', 0, 0, w, h)
+        pdf.save(`wallify-${city.toLowerCase().replace(/\s+/g, '-')}-${size.toLowerCase()}.pdf`)
+        setIsPaying(false)
+        return
+      }
+
+      // Paid flow: store high-res capture → Stripe checkout
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.92)
       localStorage.setItem('wallify_poster_data', dataUrl)
       localStorage.setItem('wallify_poster_size', size)
       localStorage.setItem('wallify_poster_city', city)
-      const res = await fetch('/api/create-checkout-session', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ city, size }) })
-      const { url } = await res.json()
-      if (url) window.location.href = url
-    } catch (e) { console.error(e); setIsPaying(false) }
+
+      const res = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ city, size }),
+      })
+      const data = await res.json()
+      if (data.url) {
+        window.location.href = data.url
+      } else {
+        alert(data.error || 'Could not start checkout. Please try again.')
+        setIsPaying(false)
+      }
+    } catch (e) {
+      console.error(e)
+      alert('Something went wrong. Please try again.')
+      setIsPaying(false)
+    }
   }
 
   const displayTitle = customTitle || city.toUpperCase()
@@ -478,10 +522,16 @@ export default function MapEditor() {
               <button key={s} onClick={() => setSize(s)} style={{ padding: isMobile ? '3px 10px' : '4px 14px', borderRadius: 6, fontSize: isMobile ? 11 : 12, fontWeight: 600, cursor: 'pointer', border: 'none', background: size === s ? '#8b5cf6' : 'transparent', color: size === s ? '#fff' : '#6b7280' }}>{s}</button>
             ))}
           </div>
+          <input
+            value={promoCode}
+            onChange={e => setPromoCode(e.target.value)}
+            placeholder={isMobile ? 'Code' : 'Promo code'}
+            style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 8, padding: isMobile ? '7px 8px' : '7px 10px', fontSize: 12, color: '#fff', outline: 'none', width: isMobile ? 58 : 96 }}
+          />
           <button onClick={handleBuyAndDownload} disabled={isPaying || isLoading}
             style={{ background: '#8b5cf6', color: '#fff', border: 'none', borderRadius: 8, padding: isMobile ? '7px 12px' : '8px 18px', fontSize: isMobile ? 12 : 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, opacity: isPaying ? 0.6 : 1 }}>
             <Download style={{ width: 14, height: 14 }} />
-            {isPaying ? '...' : isMobile ? '€5' : 'Buy & Download — €5'}
+            {isPaying ? '...' : promoCode.toLowerCase().trim() === 'free' ? (isMobile ? 'Free' : 'Download Free') : (isMobile ? '€5' : 'Buy & Download — €5')}
           </button>
         </div>
       </header>
