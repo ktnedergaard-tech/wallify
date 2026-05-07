@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { MapPin, Download, Type, Palette, Map, Eye, LayoutTemplate, X } from 'lucide-react'
+import { MapPin, Download, Type, Palette, Map, Eye, LayoutTemplate, X, Share2 } from 'lucide-react'
 
 interface ThemeRoads {
   major: string; minor_high: string; minor_mid: string; minor_low: string; path: string; outline: string
@@ -189,8 +189,10 @@ export default function MapEditor() {
   const [layout, setLayout] = useState<Layout>('split')
   const [activeTab, setActiveTab] = useState<'templates' | 'style' | 'colors' | 'typography' | 'labels'>('templates')
   const [promoCode, setPromoCode] = useState('')
+  const [downloadFormat, setDownloadFormat] = useState<'pdf' | 'png' | 'svg'>('pdf')
   const [isLoading, setIsLoading] = useState(false)
   const [isPaying, setIsPaying] = useState(false)
+  const [isSharing, setIsSharing] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const [panelOpen, setPanelOpen] = useState(false)
   const [windowSize, setWindowSize] = useState({ w: 1200, h: 800 })
@@ -271,26 +273,47 @@ export default function MapEditor() {
     if (isMobile) setPanelOpen(false)
   }
 
+  const captureHighRes = async () => {
+    const { default: html2canvas } = await import('html2canvas')
+    const printWidths = { A4: 2480, A3: 3508 }
+    const printScale = Math.ceil(printWidths[size] / W)
+    return html2canvas(posterRef.current!, { scale: printScale, useCORS: true, allowTaint: true, width: W, height: H })
+  }
+
+  const downloadCanvas = async (canvas: HTMLCanvasElement, fmt: 'pdf' | 'png' | 'svg') => {
+    const slug = `wallify-${city.toLowerCase().replace(/\s+/g, '-')}-${size.toLowerCase()}`
+    if (fmt === 'png') {
+      const a = document.createElement('a')
+      a.href = canvas.toDataURL('image/png'); a.download = `${slug}.png`; a.click()
+    } else if (fmt === 'pdf') {
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.92)
+      const { default: jsPDF } = await import('jspdf')
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: size.toLowerCase() as 'a4' | 'a3' })
+      const w = size === 'A4' ? 210 : 297; const h = size === 'A4' ? 297 : 420
+      pdf.addImage(dataUrl, 'JPEG', 0, 0, w, h); pdf.save(`${slug}.pdf`)
+    } else {
+      const dataUrl = canvas.toDataURL('image/png')
+      const mmW = size === 'A4' ? '210' : '297'; const mmH = size === 'A4' ? '297' : '420'
+      const pxW = canvas.width; const pxH = canvas.height
+      const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${mmW}mm" height="${mmH}mm" viewBox="0 0 ${pxW} ${pxH}"><image href="${dataUrl}" width="${pxW}" height="${pxH}"/></svg>`
+      const blob = new Blob([svgContent], { type: 'image/svg+xml' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a'); a.href = url; a.download = `${slug}.svg`; a.click()
+      URL.revokeObjectURL(url)
+    }
+  }
+
   const handleBuyAndDownload = async () => {
     setIsPaying(true)
     try {
-      const { default: html2canvas } = await import('html2canvas')
-      const printWidths = { A4: 2480, A3: 3508 }
-      const printScale = Math.ceil(printWidths[size] / W)
-      const canvas = await html2canvas(posterRef.current!, {
-        scale: printScale, useCORS: true, allowTaint: true, width: W, height: H,
-      })
+      const canvas = await captureHighRes()
       const isFree = promoCode.toLowerCase().trim() === 'free'
       if (isFree) {
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.92)
-        const { default: jsPDF } = await import('jspdf')
-        const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: size.toLowerCase() as 'a4' | 'a3' })
-        const w = size === 'A4' ? 210 : 297; const h = size === 'A4' ? 297 : 420
-        pdf.addImage(dataUrl, 'JPEG', 0, 0, w, h)
-        pdf.save(`wallify-${city.toLowerCase().replace(/\s+/g, '-')}-${size.toLowerCase()}.pdf`)
+        await downloadCanvas(canvas, downloadFormat)
         setIsPaying(false); return
       }
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.92)
+      // Paid flow: store PNG data → Stripe → success page handles format choice
+      const dataUrl = canvas.toDataURL('image/png')
       localStorage.setItem('wallify_poster_data', dataUrl)
       localStorage.setItem('wallify_poster_size', size)
       localStorage.setItem('wallify_poster_city', city)
@@ -303,6 +326,29 @@ export default function MapEditor() {
       else { alert(data.error || 'Could not start checkout. Please try again.'); setIsPaying(false) }
     } catch (e) {
       console.error(e); alert('Something went wrong. Please try again.'); setIsPaying(false)
+    }
+  }
+
+  const handleInstagramShare = async () => {
+    setIsSharing(true)
+    try {
+      const canvas = await captureHighRes()
+      const blob = await new Promise<Blob>((resolve, reject) =>
+        canvas.toBlob(b => b ? resolve(b) : reject(new Error('Canvas to blob failed')), 'image/png')
+      )
+      const file = new File([blob], `wallify-${city.toLowerCase().replace(/\s+/g, '-')}.png`, { type: 'image/png' })
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], title: `${city} Map Poster` })
+      } else {
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a'); a.href = url; a.download = file.name; a.click()
+        URL.revokeObjectURL(url)
+        alert('Poster downloaded! Open Instagram and create a new post to share it.')
+      }
+    } catch (e) {
+      if ((e as Error).name !== 'AbortError') { console.error(e); alert('Could not share. Please try again.') }
+    } finally {
+      setIsSharing(false)
     }
   }
 
@@ -509,12 +555,28 @@ export default function MapEditor() {
               <button key={s} onClick={() => setSize(s)} style={{ padding: isMobile ? '3px 10px' : '4px 14px', borderRadius: 6, fontSize: isMobile ? 11 : 12, fontWeight: 600, cursor: 'pointer', border: 'none', background: size === s ? '#8b5cf6' : 'transparent', color: size === s ? '#fff' : '#6b7280' }}>{s}</button>
             ))}
           </div>
-          <input value={promoCode} onChange={e => setPromoCode(e.target.value)} placeholder={isMobile ? 'Code' : 'Promo code'}
-            style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 8, padding: isMobile ? '7px 8px' : '7px 10px', fontSize: 12, color: '#fff', outline: 'none', width: isMobile ? 58 : 96 }} />
+          {/* Format selector */}
+          <div style={{ display: 'flex', background: '#1a1a1a', borderRadius: 7, padding: 2, border: '1px solid #2a2a2a' }}>
+            {(['pdf', 'png', 'svg'] as const).map(f => (
+              <button key={f} onClick={() => setDownloadFormat(f)}
+                style={{ padding: isMobile ? '3px 7px' : '4px 9px', borderRadius: 5, fontSize: isMobile ? 10 : 11, fontWeight: 600, cursor: 'pointer', border: 'none', background: downloadFormat === f ? '#8b5cf6' : 'transparent', color: downloadFormat === f ? '#fff' : '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                {f}
+              </button>
+            ))}
+          </div>
+          {!isMobile && (
+            <input value={promoCode} onChange={e => setPromoCode(e.target.value)} placeholder="Promo code"
+              style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 8, padding: '7px 10px', fontSize: 12, color: '#fff', outline: 'none', width: 90 }} />
+          )}
           <button onClick={handleBuyAndDownload} disabled={isPaying || isLoading}
             style={{ background: '#8b5cf6', color: '#fff', border: 'none', borderRadius: 8, padding: isMobile ? '7px 12px' : '8px 18px', fontSize: isMobile ? 12 : 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, opacity: isPaying ? 0.6 : 1 }}>
             <Download style={{ width: 14, height: 14 }} />
             {isPaying ? '...' : promoCode.toLowerCase().trim() === 'free' ? (isMobile ? 'Free' : 'Download Free') : (isMobile ? '€5' : 'Buy & Download — €5')}
+          </button>
+          {/* Instagram share */}
+          <button onClick={handleInstagramShare} disabled={isSharing || isPaying} title="Share on Instagram"
+            style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 8, padding: isMobile ? '7px 9px' : '8px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: isSharing ? 0.6 : 1, flexShrink: 0 }}>
+            <Share2 style={{ width: 15, height: 15, color: '#e1306c' }} />
           </button>
         </div>
       </header>
@@ -527,7 +589,9 @@ export default function MapEditor() {
               style={{ width: '100%', background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 8, paddingLeft: 30, paddingRight: 12, paddingTop: 8, paddingBottom: 8, fontSize: 14, color: '#fff', outline: 'none', boxSizing: 'border-box' }}
               placeholder="Search city..." />
           </div>
-          <button type="submit" style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 8, padding: '0 14px', fontSize: 13, color: '#fff', cursor: 'pointer' }}>Go</button>
+          <input value={promoCode} onChange={e => setPromoCode(e.target.value)} placeholder="Code"
+            style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 8, padding: '0 8px', fontSize: 12, color: '#fff', outline: 'none', width: 52 }} />
+          <button type="submit" style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 8, padding: '0 12px', fontSize: 13, color: '#fff', cursor: 'pointer' }}>Go</button>
         </form>
       )}
 
